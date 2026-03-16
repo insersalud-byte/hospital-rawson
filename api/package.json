@@ -1,0 +1,9 @@
+{
+  "name": "hospital-rawson-api",
+  "version": "1.0.0",
+  "description": "Hospital Rawson Serverless API for Vercel",
+  "private": true,
+  "dependencies": {
+    "@supabase/supabase-js": "^2.90.1"
+  }
+}
