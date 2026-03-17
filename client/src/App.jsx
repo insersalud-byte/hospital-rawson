@@ -230,7 +230,7 @@ const ProtectedRoute = ({ children }) => {
 // ─── App ───────────────────────────────────────────────────────────────────────
 function App() {
     return (
-        <Router basename="/consultorio">
+        <Router basename="/">
             <AuthProvider>
                 <Routes>
                     <Route path="/login" element={<Login />} />
