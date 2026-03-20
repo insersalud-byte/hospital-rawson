@@ -10,7 +10,7 @@ cd server
 npm install
 node index.js
 ```
-El servidor corre en el puerto `3001` y gestiona el archivo `db/hospital_rawson_kinesiologia.xlsx`.
+El servidor corre en el puerto `3005` y gestiona la base de datos en **Supabase**.
 
 ### 2. Cliente (Frontend)
 ```bash

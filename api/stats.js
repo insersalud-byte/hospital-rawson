@@ -1,4 +1,4 @@
-const supabase = require('./_supabase');
+const { supabase, parseId } = require('./_supabase');
 
 module.exports = async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -9,7 +9,7 @@ module.exports = async (req, res) => {
     if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
     try {
-        if (!supabase) throw new Error('Supabase client not initialized. Check SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.');
+        if (!supabase) throw new Error('Supabase client not initialized. Check SUPABASE_URL and SUPABASE_ANON_KEY/SUPABASE_SERVICE_ROLE_KEY.');
 
         const url = new URL(req.url, `http://${req.headers.host}`);
         const start = url.searchParams.get('start');
@@ -22,7 +22,7 @@ module.exports = async (req, res) => {
 
         let pQuery = supabase.from('rawson_pacientes').select('*');
         if (start && end) {
-            const pacienteIds = [...new Set(sesiones.map(s => s.paciente_id))];
+            const pacienteIds = [...new Set(sesiones.map(s => parseId(s.paciente_id)))].filter(Boolean);
             if (pacienteIds.length > 0) pQuery = pQuery.in('id', pacienteIds);
         }
         const { data: pacientes, error: pError } = await pQuery;

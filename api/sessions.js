@@ -1,4 +1,4 @@
-const supabase = require('./_supabase');
+const { supabase, parseId } = require('./_supabase');
 
 module.exports = async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -7,7 +7,7 @@ module.exports = async (req, res) => {
     if (req.method === 'OPTIONS') return res.status(200).end();
 
     try {
-        if (!supabase) throw new Error('Supabase client not initialized. Check SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.');
+        if (!supabase) throw new Error('Supabase client not initialized. Check SUPABASE_URL and SUPABASE_ANON_KEY/SUPABASE_SERVICE_ROLE_KEY.');
 
         const url = new URL(req.url, `http://${req.headers.host}`);
         const parts = url.pathname.replace('/api/sessions', '').split('/').filter(Boolean);
@@ -17,7 +17,7 @@ module.exports = async (req, res) => {
             const { data, error } = await supabase
                 .from('rawson_sesiones')
                 .select('*, tratamiento:rawson_tratamientos(nombre)')
-                .eq('paciente_id', parts[1])
+                .eq('paciente_id', parseId(parts[1]))
                 .order('fecha', { ascending: false });
             if (error) throw error;
             return res.json(data.map(s => ({ ...s, tratamiento_nombre: s.tratamiento?.nombre })));
@@ -38,7 +38,12 @@ module.exports = async (req, res) => {
             if (!Array.isArray(sesiones) || sesiones.length === 0)
                 return res.status(400).json({ error: 'Se requiere un array de sesiones' });
             const { error } = await supabase.from('rawson_sesiones').insert(
-                sesiones.map(s => ({ ...s, estado: s.estado || 'programado', created_at: new Date().toISOString() }))
+                sesiones.map(s => ({
+                    ...s,
+                    paciente_id: parseId(s.paciente_id),
+                    estado: s.estado || 'programado',
+                    created_at: new Date().toISOString()
+                }))
             );
             if (error) throw error;
             return res.json({ success: true, created: sesiones.length });
@@ -48,8 +53,15 @@ module.exports = async (req, res) => {
         if (req.method === 'POST') {
             const { paciente_id, fecha, hora, kinesiologo_id, kinesiologo_nombre_snapshot, estado, tratamiento_id, patologia_id, observaciones } = req.body;
             const { error } = await supabase.from('rawson_sesiones').insert({
-                paciente_id, fecha, hora, kinesiologo_id, kinesiologo_nombre_snapshot,
-                estado: estado || 'programado', tratamiento_id, patologia_id, observaciones,
+                paciente_id: parseId(paciente_id),
+                fecha,
+                hora,
+                kinesiologo_id: parseId(kinesiologo_id),
+                kinesiologo_nombre_snapshot,
+                estado: estado || 'programado',
+                tratamiento_id: parseId(tratamiento_id),
+                patologia_id: parseId(patologia_id),
+                observaciones,
                 created_at: new Date().toISOString()
             });
             if (error) throw error;
@@ -60,18 +72,19 @@ module.exports = async (req, res) => {
         if (req.method === 'PUT' && parts[0]) {
             const { estado, tratamiento_id, observaciones, kinesiologo_nombre_snapshot } = req.body;
             const { error } = await supabase.from('rawson_sesiones').update({
-                estado, tratamiento_id: tratamiento_id || null,
+                estado,
+                tratamiento_id: parseId(tratamiento_id),
                 observaciones: observaciones || null,
                 kinesiologo_nombre_snapshot: kinesiologo_nombre_snapshot || null,
                 updated_at: new Date().toISOString()
-            }).eq('id', parts[0]);
+            }).eq('id', parseId(parts[0]));
             if (error) throw error;
             return res.json({ success: true });
         }
 
         // DELETE /api/sessions/:id
         if (req.method === 'DELETE' && parts[0]) {
-            const { error } = await supabase.from('rawson_sesiones').delete().eq('id', parts[0]);
+            const { error } = await supabase.from('rawson_sesiones').delete().eq('id', parseId(parts[0]));
             if (error) throw error;
             return res.json({ success: true });
         }

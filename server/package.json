@@ -13,6 +13,8 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@qdrant/js-client-rest": "^1.17.0",
+    "@supabase/supabase-js": "^2.99.2",
     "axios": "^1.13.6",
     "cors": "^2.8.6",
     "date-fns": "^4.1.0",
@@ -21,6 +23,7 @@
     "express": "^5.2.1",
     "lodash": "^4.17.21",
     "sqlite": "^5.1.1",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^5.1.7",
+    "uuid": "^13.0.0"
   }
 }

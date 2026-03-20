@@ -278,7 +278,8 @@ const PatientForm = ({ onClose, onSave, patientToEdit }) => {
             }
         } catch (err) {
             console.error('Error guardando:', err);
-            alert('Error al guardar. Verificá la conexión.');
+            const msg = err.response?.data?.error || err.message || 'Error desconocido';
+            alert(`Error al guardar: ${msg}. Verificá la conexión o contactá a soporte.`);
         } finally {
             setSaving(false);
         }

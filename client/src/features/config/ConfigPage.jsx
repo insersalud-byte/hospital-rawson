@@ -46,6 +46,8 @@ const ConfigPage = () => {
             showSuccess('✅ Kinesiólogo guardado correctamente');
         } catch (err) {
             console.error('Error guardando kinesiólogo:', err);
+            const msg = err.response?.data?.error || err.message || 'Error desconocido';
+            alert(`Error al guardar kinesiólogo: ${msg}`);
         }
     };
 
@@ -58,6 +60,8 @@ const ConfigPage = () => {
             showSuccess('✅ Patología guardada correctamente');
         } catch (err) {
             console.error('Error guardando patología:', err);
+            const msg = err.response?.data?.error || err.message || 'Error desconocido';
+            alert(`Error al guardar patología: ${msg}`);
         }
     };
 
@@ -70,6 +74,8 @@ const ConfigPage = () => {
             showSuccess('✅ Tratamiento guardado correctamente');
         } catch (err) {
             console.error('Error guardando tratamiento:', err);
+            const msg = err.response?.data?.error || err.message || 'Error desconocido';
+            alert(`Error al guardar tratamiento: ${msg}`);
         }
     };
 

@@ -1,4 +1,4 @@
-const supabase = require('./_supabase');
+const { supabase, parseId } = require('./_supabase');
 
 module.exports = async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -7,7 +7,7 @@ module.exports = async (req, res) => {
     if (req.method === 'OPTIONS') return res.status(200).end();
 
     try {
-        if (!supabase) throw new Error('Supabase client not initialized. Check SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.');
+        if (!supabase) throw new Error('Supabase client not initialized. Check SUPABASE_URL and SUPABASE_ANON_KEY/SUPABASE_SERVICE_ROLE_KEY.');
 
         if (req.method === 'GET') {
             const { data, error } = await supabase.from('rawson_tratamientos').select('*').order('nombre');
@@ -17,14 +17,18 @@ module.exports = async (req, res) => {
 
         if (req.method === 'POST') {
             const { id, nombre } = req.body;
-            const { error } = await supabase.from('rawson_tratamientos').upsert({ id, nombre });
+            const recordId = parseId(id) || Date.now();
+            const { error } = await supabase.from('rawson_tratamientos').upsert({ id: recordId, nombre }, { onConflict: 'id' });
             if (error) throw error;
-            return res.json({ success: true });
+            return res.json({ success: true, id: recordId });
         }
 
         return res.status(405).json({ error: 'Method not allowed' });
     } catch (error) {
         console.error('API Error:', error);
-        return res.status(500).json({ error: error.message || 'Internal Server Error' });
+        return res.status(500).json({ 
+            error: error.message || 'Internal Server Error',
+            details: error
+        });
     }
 };
