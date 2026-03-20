@@ -15,7 +15,7 @@ const API_URL = import.meta.env.MODE === 'development' ? 'http://localhost:3005/
 const Dashboard = () => (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
         <div className="premium-card vibrant-gradient" style={{ height: '280px', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '40px' }}>
-            <h1 style={{ fontSize: '2.2rem', marginBottom: '10px' }}>Panel de Control (V3 - Conexión Forzada)</h1>
+            <h1 style={{ fontSize: '2.2rem', marginBottom: '10px' }}>Panel de Control (V4 - Corregido Almanaque)</h1>
             <p style={{ fontSize: '1.1rem', opacity: 0.9 }}>Gestión clínica — Hospital Rawson Kinesiología.</p>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>

@@ -359,10 +359,11 @@ const AgendaCalendar = () => {
             const daySessions = (resSessions.data || []).filter(s => s.fecha === dateStr && s.estado === 'programado');
             const newApt = {};
             daySessions.forEach(session => {
-                const hora = session.hora;
+                const horaFull = session.hora || '08:00';
+                const hora = horaFull.substring(0, 5); // Ensure HH:mm format
                 const patient = (resPatients.data || []).find(p => String(p.id) === String(session.paciente_id));
                 const count = Object.keys(newApt).filter(k => k.startsWith(`${hora}-`)).length;
-                if (patient && count < 2) {
+                if (patient && count < 10) { // Allow more than 2 if needed, but slots only show 2
                     newApt[`${hora}-${count}`] = { ...patient, sessionId: session.id, hora };
                 }
             });
