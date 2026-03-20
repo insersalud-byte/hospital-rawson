@@ -37,6 +37,19 @@ const ConfigPage = () => {
         setTimeout(() => setSavedMsg(''), 3000);
     };
 
+    const deleteProfessional = async (id, nombre) => {
+        if (!window.confirm(`¿Estás seguro que querés eliminar permanentemente al kinesiólogo ${nombre}?`)) return;
+        try {
+            await axios.delete(`${API_URL}/professionals/${id}`);
+            await fetchConfig();
+            showSuccess('✅ Kinesiólogo eliminado');
+        } catch (err) {
+            console.error('Error eliminando kinesiólogo:', err);
+            const msg = err.response?.data?.error || err.message || 'Error desconocido';
+            alert(`Error al eliminar kinesiólogo: ${msg}`);
+        }
+    };
+
     const addProfessional = async () => {
         if (!newPro.nombre.trim()) return;
         try {
@@ -191,7 +204,7 @@ const ConfigPage = () => {
                                     <span style={{ fontWeight: '600' }}>{pro.nombre}</span>
                                     {pro.matricula && <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}> — Mat. {pro.matricula}</span>}
                                 </div>
-                                <Trash2 size={16} color="var(--error)" style={{ cursor: 'not-allowed', opacity: 0.4 }} />
+                                <Trash2 size={16} color="var(--error)" style={{ cursor: 'pointer' }} onClick={() => deleteProfessional(pro.id, pro.nombre)} title="Eliminar kinesiólogo" />
                             </div>
                         ))}
                     </div>
