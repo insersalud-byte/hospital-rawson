@@ -78,6 +78,32 @@ const ConfigPage = () => {
         }
     };
 
+    const deletePathology = async (id, nombre) => {
+        if (!window.confirm(`¿Estás seguro que querés eliminar la patología "${nombre}"?`)) return;
+        try {
+            await axios.delete(`${API_URL}/pathologies/${id}`);
+            await fetchConfig();
+            showSuccess('✅ Patología eliminada');
+        } catch (err) {
+            console.error('Error eliminando patología:', err);
+            const msg = err.response?.data?.error || err.message || 'Error desconocido';
+            alert(`Error al eliminar patología: ${msg}`);
+        }
+    };
+
+    const deleteTreatment = async (id, nombre) => {
+        if (!window.confirm(`¿Estás seguro que querés eliminar el tratamiento "${nombre}"?`)) return;
+        try {
+            await axios.delete(`${API_URL}/treatments/${id}`);
+            await fetchConfig();
+            showSuccess('✅ Tratamiento eliminado');
+        } catch (err) {
+            console.error('Error eliminando tratamiento:', err);
+            const msg = err.response?.data?.error || err.message || 'Error desconocido';
+            alert(`Error al eliminar tratamiento: ${msg}`);
+        }
+    };
+
     const addTreatment = async () => {
         if (!newTreatment.trim()) return;
         try {
@@ -237,9 +263,11 @@ const ConfigPage = () => {
                             <div key={p.id} style={{
                                 padding: '7px 14px', background: 'rgba(0,136,204,0.12)',
                                 borderRadius: '20px', fontSize: '0.85rem',
-                                border: '1px solid var(--primary)', color: 'var(--primary)'
+                                border: '1px solid var(--primary)', color: 'var(--primary)',
+                                display: 'flex', alignItems: 'center', gap: '8px'
                             }}>
                                 {p.nombre}
+                                <Trash2 size={13} color="var(--error)" style={{ cursor: 'pointer', flexShrink: 0 }} onClick={() => deletePathology(p.id, p.nombre)} title="Eliminar patología" />
                             </div>
                         ))}
                     </div>
@@ -273,9 +301,13 @@ const ConfigPage = () => {
                                 padding: '12px 18px', background: 'rgba(0,136,204,0.08)',
                                 borderRadius: '12px', fontSize: '0.9rem',
                                 border: '1px solid var(--primary)',
-                                display: 'flex', alignItems: 'center', gap: '8px'
+                                display: 'flex', alignItems: 'center', gap: '8px',
+                                justifyContent: 'space-between'
                             }}>
-                                <Briefcase size={14} color="var(--primary)" /> {t.nombre}
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Briefcase size={14} color="var(--primary)" /> {t.nombre}
+                                </span>
+                                <Trash2 size={14} color="var(--error)" style={{ cursor: 'pointer', flexShrink: 0 }} onClick={() => deleteTreatment(t.id, t.nombre)} title="Eliminar tratamiento" />
                             </div>
                         ))}
                     </div>
