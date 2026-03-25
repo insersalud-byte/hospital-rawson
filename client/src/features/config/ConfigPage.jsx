@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Save, UserPlus, Activity, Briefcase, CheckCircle, Trash2, Download, Users, Lock, Calendar, Search } from 'lucide-react';
+import { Save, UserPlus, Activity, Briefcase, CheckCircle, Trash2, Download, Users, Lock, Calendar, Search, ChevronDown, ChevronUp } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -18,6 +18,7 @@ const ConfigPage = () => {
     const [savedMsg, setSavedMsg] = useState('');
     const [patientSearch, setPatientSearch] = useState('');
     const [sessionSearch, setSessionSearch] = useState('');
+    const [expandedPatients, setExpandedPatients] = useState(new Set());
 
     useEffect(() => {
         fetchConfig();
@@ -369,7 +370,7 @@ const ConfigPage = () => {
                     />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '10px', maxHeight: '380px', overflowY: 'auto' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '480px', overflowY: 'auto' }}>
                     {patients.length === 0 && (
                         <p style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.85rem' }}>Sin pacientes registrados.</p>
                     )}
@@ -377,23 +378,81 @@ const ConfigPage = () => {
                         .filter(p => `${p.nombre} ${p.apellido}`.toLowerCase().includes(patientSearch.toLowerCase()))
                         .map(p => {
                             const attended = sessions.some(s => String(s.paciente_id) === String(p.id) && s.estado === 'asistió');
+                            const patSessions = sessions.filter(s => String(s.paciente_id) === String(p.id));
+                            const pendingSessions = patSessions.filter(s => s.estado === 'programado');
+                            const isExpanded = expandedPatients.has(p.id);
+                            const toggleExpand = () => setExpandedPatients(prev => {
+                                const next = new Set(prev);
+                                next.has(p.id) ? next.delete(p.id) : next.add(p.id);
+                                return next;
+                            });
                             return (
                                 <div key={p.id} style={{
-                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                    padding: '10px 14px', borderRadius: '10px',
+                                    borderRadius: '10px',
                                     background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)',
-                                    opacity: attended ? 0.55 : 1
+                                    overflow: 'hidden'
                                 }}>
-                                    <div>
-                                        <span style={{ fontWeight: '600', fontSize: '0.9rem' }}>{p.nombre} {p.apellido}</span>
-                                        <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '2px' }}>HC: {p.historia_clinica || '—'}</p>
+                                    {/* Cabecera del paciente */}
+                                    <div style={{
+                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                        padding: '10px 14px', opacity: attended ? 0.65 : 1
+                                    }}>
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <span style={{ fontWeight: '600', fontSize: '0.9rem' }}>{p.nombre} {p.apellido}</span>
+                                            <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '2px' }}>HC: {p.historia_clinica || '—'}</p>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+                                            {patSessions.length > 0 && (
+                                                <button onClick={toggleExpand} style={{
+                                                    display: 'flex', alignItems: 'center', gap: '4px',
+                                                    background: 'rgba(0,136,204,0.15)', border: '1px solid var(--primary)',
+                                                    color: 'var(--primary)', borderRadius: '8px', padding: '4px 10px',
+                                                    cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600'
+                                                }}>
+                                                    {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                                                    {patSessions.length} turno{patSessions.length !== 1 ? 's' : ''}
+                                                    {pendingSessions.length > 0 && <span style={{ color: '#ffb300' }}>({pendingSessions.length} pend.)</span>}
+                                                </button>
+                                            )}
+                                            {attended
+                                                ? <Lock size={16} color="var(--text-muted)" title="Paciente con sesiones atendidas — no se puede eliminar" />
+                                                : <Trash2 size={16} color="var(--error)" style={{ cursor: 'pointer' }}
+                                                    onClick={() => deletePatient(p.id, `${p.nombre} ${p.apellido}`)}
+                                                    title="Eliminar paciente" />
+                                            }
+                                        </div>
                                     </div>
-                                    {attended
-                                        ? <Lock size={16} color="var(--text-muted)" title="Paciente con sesiones atendidas — no se puede eliminar" />
-                                        : <Trash2 size={16} color="var(--error)" style={{ cursor: 'pointer', flexShrink: 0 }}
-                                            onClick={() => deletePatient(p.id, `${p.nombre} ${p.apellido}`)}
-                                            title="Eliminar paciente" />
-                                    }
+                                    {/* Sesiones expandidas */}
+                                    {isExpanded && (
+                                        <div style={{ borderTop: '1px solid var(--border)', padding: '8px 14px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                            {patSessions
+                                                .sort((a, b) => a.fecha > b.fecha ? -1 : 1)
+                                                .map(s => {
+                                                    const estadoColor = s.estado === 'asistió' ? '#00e676' : s.estado === 'no asistió' ? '#ff5252' : '#ffb300';
+                                                    return (
+                                                        <div key={s.id} style={{
+                                                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                                            padding: '6px 10px', borderRadius: '8px',
+                                                            background: 'rgba(255,255,255,0.03)',
+                                                            borderLeft: `3px solid ${estadoColor}`
+                                                        }}>
+                                                            <div style={{ display: 'flex', gap: '14px', alignItems: 'center', fontSize: '0.82rem' }}>
+                                                                <span style={{ fontWeight: '600' }}>
+                                                                    {s.fecha ? format(new Date(s.fecha + 'T00:00:00'), 'd/MM/yyyy', { locale: es }) : '—'}
+                                                                </span>
+                                                                <span style={{ color: 'var(--text-muted)' }}>🕐 {s.hora || '—'}</span>
+                                                                <span style={{ padding: '1px 8px', borderRadius: '10px', fontSize: '0.72rem', fontWeight: '700', background: `${estadoColor}22`, color: estadoColor, border: `1px solid ${estadoColor}` }}>
+                                                                    {s.estado || 'programado'}
+                                                                </span>
+                                                            </div>
+                                                            <Trash2 size={13} color="var(--error)" style={{ cursor: 'pointer', flexShrink: 0, marginLeft: '10px' }}
+                                                                onClick={() => deleteSession(s.id)}
+                                                                title="Eliminar turno" />
+                                                        </div>
+                                                    );
+                                                })}
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })}
