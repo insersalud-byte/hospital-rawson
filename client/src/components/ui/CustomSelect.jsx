@@ -33,11 +33,11 @@ const CustomSelect = ({ value, onChange, options, placeholder = 'Seleccionar...'
         justifyContent: 'space-between',
         alignItems: 'center',
         background: '#111318',
-        border: '1px solid ' + (isOpen ? 'var(--primary)' : 'var(--border)'),
+        border: '2px solid #ffea00',
         borderRadius: '12px',
         padding: '12px 16px',
         cursor: 'pointer',
-        fontSize: '0.95rem',
+        fontSize: '1rem',
         transition: 'all 0.2s ease',
         userSelect: 'none',
         color: selectedOption ? 'white' : 'var(--text-muted)',
@@ -73,6 +73,12 @@ const CustomSelect = ({ value, onChange, options, placeholder = 'Seleccionar...'
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {selectedOption ? selectedOption.label : placeholder}
                 </span>
+                <span style={{ 
+                    fontSize: '0.65rem',
+                    color: '#ffea00',
+                    marginRight: '10px',
+                    fontWeight: 'bold'
+                }}>• SELECTOR PERSONALIZADO •</span>
                 <span style={{ 
                     fontSize: '0.7rem',
                     transition: 'transform 0.3s ease',
