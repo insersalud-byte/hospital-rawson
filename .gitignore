@@ -3,3 +3,5 @@ node_modules/
 database.sqlite
 server/db/
 .vercel
+client/node_modules/
+client/dist/
