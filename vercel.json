@@ -7,6 +7,7 @@
     { "src": "/api/pathologies", "dest": "/api/pathologies.js" },
     { "src": "/api/treatments/(.*)", "dest": "/api/treatments.js" },
     { "src": "/api/treatments", "dest": "/api/treatments.js" },
+    { "src": "/api/patients/(.*)", "dest": "/api/patients.js" },
     { "src": "/api/patients", "dest": "/api/patients.js" },
     { "src": "/api/sessions/patient/(.*)", "dest": "/api/sessions.js" },
     { "src": "/api/sessions/batch", "dest": "/api/sessions.js" },

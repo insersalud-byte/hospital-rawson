@@ -2,7 +2,7 @@ const { supabase, parseId } = require('./_supabase');
 
 module.exports = async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     if (req.method === 'OPTIONS') return res.status(200).end();
 
@@ -33,6 +33,33 @@ module.exports = async (req, res) => {
             });
             if (error) throw error;
             return res.json({ success: true, id: recordId });
+        }
+
+        if (req.method === 'DELETE') {
+            const url = new URL(req.url, `http://${req.headers.host}`);
+            const parts = url.pathname.replace('/api/patients', '').split('/').filter(Boolean);
+            const patId = parseId(parts[0]);
+            if (!patId) return res.status(400).json({ error: 'ID requerido' });
+
+            // Verificar si el paciente fue atendido
+            const { data: attended, error: errCheck } = await supabase
+                .from('rawson_sesiones')
+                .select('id')
+                .eq('paciente_id', patId)
+                .eq('estado', 'asistió')
+                .limit(1);
+            if (errCheck) throw errCheck;
+            if (attended && attended.length > 0)
+                return res.status(400).json({ error: 'No se puede eliminar: el paciente ya fue atendido en al menos una sesión.' });
+
+            // Borrar sesiones pendientes del paciente
+            const { error: errSes } = await supabase.from('rawson_sesiones').delete().eq('paciente_id', patId);
+            if (errSes) throw errSes;
+
+            // Borrar paciente
+            const { error } = await supabase.from('rawson_pacientes').delete().eq('id', patId);
+            if (error) throw error;
+            return res.json({ success: true });
         }
 
         return res.status(405).json({ error: 'Method not allowed' });

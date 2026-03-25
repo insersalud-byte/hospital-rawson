@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Save, UserPlus, Activity, Briefcase, CheckCircle, Trash2, Download } from 'lucide-react';
+import { Save, UserPlus, Activity, Briefcase, CheckCircle, Trash2, Download, Users, Lock, Calendar, Search } from 'lucide-react';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 const API_URL = import.meta.env.MODE === 'development' ? 'http://localhost:3005/api' : '/api';
 
@@ -8,10 +10,14 @@ const ConfigPage = () => {
     const [professionals, setProfessionals] = useState([]);
     const [pathologies, setPathologies] = useState([]);
     const [treatments, setTreatments] = useState([]);
+    const [patients, setPatients] = useState([]);
+    const [sessions, setSessions] = useState([]);
     const [newPro, setNewPro] = useState({ nombre: '', matricula: '', especialidad: '' });
     const [newPath, setNewPath] = useState('');
     const [newTreatment, setNewTreatment] = useState('');
     const [savedMsg, setSavedMsg] = useState('');
+    const [patientSearch, setPatientSearch] = useState('');
+    const [sessionSearch, setSessionSearch] = useState('');
 
     useEffect(() => {
         fetchConfig();
@@ -19,14 +25,18 @@ const ConfigPage = () => {
 
     const fetchConfig = async () => {
         try {
-            const [resPro, resPath, resTreat] = await Promise.all([
+            const [resPro, resPath, resTreat, resPat, resSes] = await Promise.all([
                 axios.get(`${API_URL}/professionals`),
                 axios.get(`${API_URL}/pathologies`),
                 axios.get(`${API_URL}/treatments`),
+                axios.get(`${API_URL}/patients`),
+                axios.get(`${API_URL}/sessions`),
             ]);
             setProfessionals(resPro.data || []);
             setPathologies(resPath.data || []);
             setTreatments(resTreat.data || []);
+            setPatients(resPat.data || []);
+            setSessions(resSes.data || []);
         } catch (err) {
             console.error('Error cargando configuración:', err);
         }
@@ -101,6 +111,29 @@ const ConfigPage = () => {
             console.error('Error eliminando tratamiento:', err);
             const msg = err.response?.data?.error || err.message || 'Error desconocido';
             alert(`Error al eliminar tratamiento: ${msg}`);
+        }
+    };
+
+    const deletePatient = async (id, nombre) => {
+        if (!window.confirm(`¿Eliminar al paciente ${nombre}? Se borrarán también sus turnos pendientes.`)) return;
+        try {
+            await axios.delete(`${API_URL}/patients/${id}`);
+            await fetchConfig();
+            showSuccess('✅ Paciente eliminado');
+        } catch (err) {
+            const msg = err.response?.data?.error || err.message || 'Error desconocido';
+            alert(`No se pudo eliminar: ${msg}`);
+        }
+    };
+
+    const deleteSession = async (id) => {
+        if (!window.confirm('¿Eliminar este turno?')) return;
+        try {
+            await axios.delete(`${API_URL}/sessions/${id}`);
+            await fetchConfig();
+            showSuccess('✅ Turno eliminado');
+        } catch (err) {
+            alert('Error al eliminar el turno.');
         }
     };
 
@@ -311,6 +344,122 @@ const ConfigPage = () => {
                             </div>
                         ))}
                     </div>
+                </div>
+            </div>
+
+            {/* ── Papelera de Pacientes ── */}
+            <div className="premium-card glass-panel" style={{ marginTop: '25px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                    <Users color="var(--error)" />
+                    <h3>Papelera de Pacientes</h3>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginLeft: '4px' }}>
+                        — Solo se pueden eliminar pacientes que nunca fueron atendidos
+                    </span>
+                </div>
+
+                {/* Buscador */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: '10px', padding: '10px 14px' }}>
+                    <Search size={16} color="var(--text-muted)" />
+                    <input
+                        type="text"
+                        placeholder="Buscar paciente por nombre o apellido..."
+                        value={patientSearch}
+                        onChange={e => setPatientSearch(e.target.value)}
+                        style={{ background: 'none', border: 'none', color: 'white', flex: 1, outline: 'none', fontSize: '0.9rem' }}
+                    />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '10px', maxHeight: '380px', overflowY: 'auto' }}>
+                    {patients.length === 0 && (
+                        <p style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.85rem' }}>Sin pacientes registrados.</p>
+                    )}
+                    {patients
+                        .filter(p => `${p.nombre} ${p.apellido}`.toLowerCase().includes(patientSearch.toLowerCase()))
+                        .map(p => {
+                            const attended = sessions.some(s => String(s.paciente_id) === String(p.id) && s.estado === 'asistió');
+                            return (
+                                <div key={p.id} style={{
+                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                    padding: '10px 14px', borderRadius: '10px',
+                                    background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)',
+                                    opacity: attended ? 0.55 : 1
+                                }}>
+                                    <div>
+                                        <span style={{ fontWeight: '600', fontSize: '0.9rem' }}>{p.nombre} {p.apellido}</span>
+                                        <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '2px' }}>HC: {p.historia_clinica || '—'}</p>
+                                    </div>
+                                    {attended
+                                        ? <Lock size={16} color="var(--text-muted)" title="Paciente con sesiones atendidas — no se puede eliminar" />
+                                        : <Trash2 size={16} color="var(--error)" style={{ cursor: 'pointer', flexShrink: 0 }}
+                                            onClick={() => deletePatient(p.id, `${p.nombre} ${p.apellido}`)}
+                                            title="Eliminar paciente" />
+                                    }
+                                </div>
+                            );
+                        })}
+                </div>
+            </div>
+
+            {/* ── Gestión de Turnos ── */}
+            <div className="premium-card glass-panel" style={{ marginTop: '25px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                    <Calendar color="var(--primary)" />
+                    <h3>Gestión de Turnos</h3>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginLeft: '4px' }}>
+                        — Podés eliminar cualquier turno programado
+                    </span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: '10px', padding: '10px 14px' }}>
+                    <Search size={16} color="var(--text-muted)" />
+                    <input
+                        type="text"
+                        placeholder="Buscar por paciente, fecha (ej: 2025-03)..."
+                        value={sessionSearch}
+                        onChange={e => setSessionSearch(e.target.value)}
+                        style={{ background: 'none', border: 'none', color: 'white', flex: 1, outline: 'none', fontSize: '0.9rem' }}
+                    />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '420px', overflowY: 'auto' }}>
+                    {sessions.length === 0 && (
+                        <p style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.85rem' }}>Sin turnos registrados.</p>
+                    )}
+                    {sessions
+                        .filter(s => {
+                            const fullName = `${s.nombre || ''} ${s.apellido || ''}`.toLowerCase();
+                            const q = sessionSearch.toLowerCase();
+                            return fullName.includes(q) || (s.fecha || '').includes(q);
+                        })
+                        .sort((a, b) => {
+                            if (a.fecha !== b.fecha) return a.fecha > b.fecha ? -1 : 1;
+                            return (a.hora || '') > (b.hora || '') ? -1 : 1;
+                        })
+                        .map(s => {
+                            const estadoColor = s.estado === 'asistió' ? '#00e676' : s.estado === 'no asistió' ? '#ff5252' : 'var(--primary)';
+                            return (
+                                <div key={s.id} style={{
+                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                    padding: '10px 16px', borderRadius: '10px',
+                                    background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)',
+                                    borderLeft: `4px solid ${estadoColor}`
+                                }}>
+                                    <div style={{ display: 'flex', gap: '18px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                        <span style={{ fontWeight: '700', fontSize: '0.88rem', minWidth: '90px' }}>
+                                            {s.fecha ? format(new Date(s.fecha + 'T00:00:00'), 'd/MM/yyyy', { locale: es }) : '—'}
+                                        </span>
+                                        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', minWidth: '50px' }}>🕐 {s.hora || '—'}</span>
+                                        <span style={{ fontSize: '0.9rem' }}>{s.nombre} {s.apellido}</span>
+                                        <span style={{ padding: '2px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: '700', background: `${estadoColor}22`, color: estadoColor, border: `1px solid ${estadoColor}` }}>
+                                            {s.estado || 'programado'}
+                                        </span>
+                                    </div>
+                                    <Trash2 size={15} color="var(--error)" style={{ cursor: 'pointer', flexShrink: 0, marginLeft: '12px' }}
+                                        onClick={() => deleteSession(s.id)}
+                                        title="Eliminar turno" />
+                                </div>
+                            );
+                        })}
                 </div>
             </div>
         </div>

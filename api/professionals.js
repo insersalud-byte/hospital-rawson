@@ -27,7 +27,14 @@ module.exports = async (req, res) => {
         }
 
         if (req.method === 'DELETE' && parts[0]) {
-            const { error } = await supabase.from('rawson_profesionales').delete().eq('id', parseId(parts[0]));
+            const profId = parseId(parts[0]);
+            // Desvincular sesiones que referencian este kinesiólogo (FK constraint)
+            const { error: errSes } = await supabase
+                .from('rawson_sesiones')
+                .update({ kinesiologo_id: null })
+                .eq('kinesiologo_id', profId);
+            if (errSes) throw errSes;
+            const { error } = await supabase.from('rawson_profesionales').delete().eq('id', profId);
             if (error) throw error;
             return res.json({ success: true });
         }

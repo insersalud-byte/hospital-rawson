@@ -334,7 +334,7 @@ const PatientPanel = ({ patient, onClose, onSaved }) => {
 
 // Estilos compartidos
 const labelStyle = { fontSize: '0.73rem', fontWeight: '700', letterSpacing: '0.5px', color: 'var(--text-muted)', display: 'block', marginBottom: '7px' };
-const selectStyle = { width: '100%', padding: '13px 14px', borderRadius: '10px', background: 'rgba(255,255,255,0.07)', color: 'white', border: '1px solid var(--border)', fontSize: '0.93rem', cursor: 'pointer' };
+const selectStyle = { width: '100%', padding: '13px 14px', borderRadius: '10px', background: '#111318', color: 'white', border: '1px solid var(--border)', fontSize: '0.93rem', cursor: 'pointer' };
 const textareaStyle = { width: '100%', padding: '12px 14px', borderRadius: '10px', background: 'rgba(255,255,255,0.05)', color: 'white', border: '1px solid var(--border)', resize: 'vertical', fontFamily: 'inherit', fontSize: '0.88rem', boxSizing: 'border-box' };
 const btnStyle = { padding: '15px', borderRadius: '12px', fontWeight: '700', fontSize: '0.9rem', cursor: 'pointer', border: 'none', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px' };
 const warnStyle = { fontSize: '0.73rem', color: '#ffea00', marginTop: '5px' };

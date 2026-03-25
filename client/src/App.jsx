@@ -148,7 +148,7 @@ const Login = () => {
                             onChange={e => setSelectedKineId(e.target.value)}
                             style={{
                                 width: '100%', padding: '14px 16px', borderRadius: '12px',
-                                background: 'rgba(255,255,255,0.08)', color: 'white',
+                                background: '#111318', color: 'white',
                                 border: '1px solid var(--primary)', fontSize: '1rem', cursor: 'pointer'
                             }}>
                             <option value="">— Seleccioná tu nombre —</option>

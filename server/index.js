@@ -45,6 +45,12 @@ app.post('/api/professionals', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+app.delete('/api/professionals/:id', async (req, res) => {
+    try {
+        res.json(await db.deleteProfesional(req.params.id));
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // --- PATOLOGIAS ---
 app.get('/api/pathologies', async (req, res) => {
     try {
@@ -55,6 +61,12 @@ app.get('/api/pathologies', async (req, res) => {
 app.post('/api/pathologies', async (req, res) => {
     try {
         res.json(await db.upsertPatologia(req.body));
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/pathologies/:id', async (req, res) => {
+    try {
+        res.json(await db.deletePatologia(req.params.id));
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -71,6 +83,12 @@ app.post('/api/treatments', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+app.delete('/api/treatments/:id', async (req, res) => {
+    try {
+        res.json(await db.deleteTratamiento(req.params.id));
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // --- PACIENTES ---
 app.get('/api/patients', async (req, res) => {
     try {
@@ -83,6 +101,12 @@ app.post('/api/patients', async (req, res) => {
         const result = await db.upsertPaciente(req.body);
         res.json(result);
     } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/patients/:id', async (req, res) => {
+    try {
+        res.json(await db.deletePaciente(req.params.id));
+    } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
 // --- SESIONES ---

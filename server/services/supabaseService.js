@@ -204,6 +204,51 @@ async function deleteSesion(id) {
     return { success: true };
 }
 
+// ─── BORRAR PROFESIONAL / PATOLOGÍA / TRATAMIENTO ────────────────────────────
+async function deleteProfesional(id) {
+    const { error } = await supabase.from('rawson_profesionales').delete().eq('id', parseId(id));
+    check(error, 'deleteProfesional');
+    return { success: true };
+}
+
+async function deletePatologia(id) {
+    const { error } = await supabase.from('rawson_patologias').delete().eq('id', parseId(id));
+    check(error, 'deletePatologia');
+    return { success: true };
+}
+
+async function deleteTratamiento(id) {
+    const { error } = await supabase.from('rawson_tratamientos').delete().eq('id', parseId(id));
+    check(error, 'deleteTratamiento');
+    return { success: true };
+}
+
+// ─── BORRAR PACIENTE (solo si no fue atendido) ────────────────────────────────
+async function deletePaciente(id) {
+    const { data: attended, error: errCheck } = await supabase
+        .from('rawson_sesiones')
+        .select('id')
+        .eq('paciente_id', parseId(id))
+        .eq('estado', 'asistió')
+        .limit(1);
+    check(errCheck, 'deletePaciente-check');
+
+    if (attended && attended.length > 0) {
+        throw new Error('No se puede eliminar: el paciente ya fue atendido en al menos una sesión.');
+    }
+
+    // Borrar todas las sesiones del paciente primero
+    const { error: errSes } = await supabase
+        .from('rawson_sesiones')
+        .delete()
+        .eq('paciente_id', parseId(id));
+    check(errSes, 'deletePaciente-sesiones');
+
+    const { error } = await supabase.from('rawson_pacientes').delete().eq('id', parseId(id));
+    check(error, 'deletePaciente');
+    return { success: true };
+}
+
 // ─── ESTADÍSTICAS ─────────────────────────────────────────────────────────────
 async function getStats({ start, end } = {}) {
     let sesionesQuery = supabase
@@ -264,10 +309,10 @@ async function getStats({ start, end } = {}) {
 
 module.exports = {
     init,
-    getProfesionales, upsertProfesional,
-    getPatologias, upsertPatologia,
-    getTratamientos, upsertTratamiento,
-    getPacientes, upsertPaciente,
+    getProfesionales, upsertProfesional, deleteProfesional,
+    getPatologias, upsertPatologia, deletePatologia,
+    getTratamientos, upsertTratamiento, deleteTratamiento,
+    getPacientes, upsertPaciente, deletePaciente,
     getSesionesByPaciente, getSesiones,
     createSesion, createSesionesBatch, updateSesion, deleteSesion,
     getStats
