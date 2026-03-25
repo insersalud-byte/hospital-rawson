@@ -39,9 +39,12 @@ module.exports = async (req, res) => {
             stats.asistencias.total++;
             if (s.estado === 'asistió' && s.kinesiologo_nombre_snapshot)
                 stats.kinesiologos[s.kinesiologo_nombre_snapshot] = (stats.kinesiologos[s.kinesiologo_nombre_snapshot] || 0) + 1;
-            const trName = s.tratamiento?.nombre;
-            if (s.estado === 'asistió' && trName)
-                stats.tratamientos[trName] = (stats.tratamientos[trName] || 0) + 1;
+            const trTexto = s.tratamientos_texto || s.tratamiento?.nombre;
+            if (s.estado === 'asistió' && trTexto) {
+                trTexto.split(',').map(t => t.trim()).filter(Boolean).forEach(name => {
+                    stats.tratamientos[name] = (stats.tratamientos[name] || 0) + 1;
+                });
+            }
         });
 
         pacientes.forEach(p => {

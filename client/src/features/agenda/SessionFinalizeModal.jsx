@@ -11,7 +11,7 @@ const SessionFinalizeModal = ({ slot, scheduledPatients, onClose, onSave }) => {
     const [professionals, setProfessionals] = useState([]);
     const [treatments, setTreatments] = useState([]);
     const [selectedKine, setSelectedKine] = useState('');
-    const [selectedTreatment, setSelectedTreatment] = useState('');
+    const [selectedTreatments, setSelectedTreatments] = useState(new Set());
     const [observaciones, setObservaciones] = useState('');
     const [notasExtra, setNotasExtra] = useState('');
     const [saving, setSaving] = useState(false);
@@ -31,7 +31,10 @@ const SessionFinalizeModal = ({ slot, scheduledPatients, onClose, onSave }) => {
         if (!selectedKine) { alert('Seleccioná el kinesiólogo que atendió.'); return; }
 
         const kineNombre = professionals.find(p => String(p.id) === String(selectedKine))?.nombre || selectedKine;
-        const treatNombre = treatments.find(t => String(t.id) === String(selectedTreatment))?.nombre || '';
+        const tratamientosTexto = selectedTreatments.size > 0
+            ? [...selectedTreatments].map(id => treatments.find(t => String(t.id) === String(id))?.nombre).filter(Boolean).join(', ')
+            : null;
+        const firstTreatmentId = selectedTreatments.size > 0 ? [...selectedTreatments][0] : null;
         const obsCompletas = [
             observaciones,
             notasExtra ? `📌 Nota extra: ${notasExtra}` : ''
@@ -43,9 +46,10 @@ const SessionFinalizeModal = ({ slot, scheduledPatients, onClose, onSave }) => {
             if (sessionId) {
                 await axios.put(`${API_URL}/sessions/${sessionId}`, {
                     estado,
-                    tratamiento_id: selectedTreatment || null,
+                    tratamiento_id: firstTreatmentId,
                     observaciones: obsCompletas,
                     kinesiologo_nombre_snapshot: kineNombre,
+                    tratamientos_texto: tratamientosTexto,
                 });
             } else {
                 await axios.post(`${API_URL}/sessions`, {
@@ -53,9 +57,10 @@ const SessionFinalizeModal = ({ slot, scheduledPatients, onClose, onSave }) => {
                     fecha: slot.fecha || new Date().toISOString().split('T')[0],
                     hora: slot.id,
                     estado,
-                    tratamiento_id: selectedTreatment || null,
+                    tratamiento_id: firstTreatmentId,
                     observaciones: obsCompletas,
                     kinesiologo_nombre_snapshot: kineNombre,
+                    tratamientos_texto: tratamientosTexto,
                 });
             }
             onSave();
@@ -128,20 +133,48 @@ const SessionFinalizeModal = ({ slot, scheduledPatients, onClose, onSave }) => {
                         )}
                     </div>
 
-                    {/* Tratamiento */}
+                    {/* Tratamientos (Multi-select) */}
                     <div>
-                        <label style={labelStyle}>💊 TRATAMIENTO APLICADO</label>
-                        <select
-                            value={selectedTreatment}
-                            onChange={e => setSelectedTreatment(e.target.value)}
-                            style={selectStyle}>
-                            <option value="">— Sin tratamiento específico —</option>
-                            {treatments.map(t => (
-                                <option key={t.id} value={t.id}>{t.nombre}</option>
-                            ))}
-                        </select>
+                        <label style={labelStyle}>💊 TRATAMIENTOS APLICADOS (seleccioná uno o varios)</label>
                         {treatments.length === 0 && (
                             <p style={warnStyle}>⚠️ Sin tratamientos cargados. Ir a Configuración.</p>
+                        )}
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '6px' }}>
+                            {treatments.map(t => {
+                                const isSelected = selectedTreatments.has(String(t.id));
+                                return (
+                                    <button
+                                        key={t.id}
+                                        type="button"
+                                        onClick={() => {
+                                            setSelectedTreatments(prev => {
+                                                const next = new Set(prev);
+                                                if (next.has(String(t.id))) next.delete(String(t.id));
+                                                else next.add(String(t.id));
+                                                return next;
+                                            });
+                                        }}
+                                        style={{
+                                            padding: '8px 16px',
+                                            borderRadius: '20px',
+                                            fontSize: '0.85rem',
+                                            fontWeight: '600',
+                                            cursor: 'pointer',
+                                            border: isSelected ? '2px solid #00e676' : '1px solid var(--border)',
+                                            background: isSelected ? 'rgba(0,230,118,0.15)' : 'rgba(255,255,255,0.05)',
+                                            color: isSelected ? '#00e676' : 'var(--text-muted)',
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                    >
+                                        {isSelected ? '✅' : '○'} {t.nombre}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        {selectedTreatments.size > 0 && (
+                            <p style={{ fontSize: '0.78rem', color: 'var(--primary)', marginTop: '8px', fontWeight: '600' }}>
+                                {selectedTreatments.size} tratamiento{selectedTreatments.size !== 1 ? 's' : ''} seleccionado{selectedTreatments.size !== 1 ? 's' : ''}
+                            </p>
                         )}
                     </div>
 

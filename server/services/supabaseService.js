@@ -131,7 +131,7 @@ async function getSesionesByPaciente(pacienteId) {
     // Flatten the join
     return data.map(s => ({
         ...s,
-        tratamiento_nombre: s.rawson_tratamientos?.nombre || null,
+        tratamiento_nombre: s.tratamientos_texto || s.rawson_tratamientos?.nombre || null,
         rawson_tratamientos: undefined
     }));
 }
@@ -153,7 +153,7 @@ async function createSesion(body) {
     const {
         paciente_id, fecha, hora, kinesiologo_id,
         kinesiologo_nombre_snapshot, estado, tratamiento_id,
-        patologia_id, observaciones
+        patologia_id, observaciones, tratamientos_texto
     } = body;
 
     const { error } = await supabase.from('rawson_sesiones').insert({
@@ -165,7 +165,8 @@ async function createSesion(body) {
         estado: estado || 'programado',
         tratamiento_id: parseId(tratamiento_id),
         patologia_id: parseId(patologia_id),
-        observaciones
+        observaciones,
+        tratamientos_texto: tratamientos_texto || null
     });
     check(error, 'createSesion');
     return { success: true };
@@ -183,7 +184,7 @@ async function createSesionesBatch(sesiones) {
     return { success: true, created: rows.length };
 }
 
-async function updateSesion(id, { estado, tratamiento_id, observaciones, kinesiologo_nombre_snapshot }) {
+async function updateSesion(id, { estado, tratamiento_id, observaciones, kinesiologo_nombre_snapshot, tratamientos_texto }) {
     const { error } = await supabase
         .from('rawson_sesiones')
         .update({
@@ -191,6 +192,7 @@ async function updateSesion(id, { estado, tratamiento_id, observaciones, kinesio
             tratamiento_id: parseId(tratamiento_id),
             observaciones,
             kinesiologo_nombre_snapshot,
+            tratamientos_texto: tratamientos_texto || null,
             updated_at: new Date().toISOString()
         })
         .eq('id', parseId(id));
@@ -294,9 +296,13 @@ async function getStats({ start, end } = {}) {
         if (s.estado === 'asistió' && s.kinesiologo_nombre_snapshot)
             stats.kinesiologos[s.kinesiologo_nombre_snapshot] = (stats.kinesiologos[s.kinesiologo_nombre_snapshot] || 0) + 1;
 
-        const trNombre = s.rawson_tratamientos?.nombre;
-        if (s.estado === 'asistió' && trNombre)
-            stats.tratamientos[trNombre] = (stats.tratamientos[trNombre] || 0) + 1;
+        // Count multi-treatments individually
+        const trTexto = s.tratamientos_texto || s.rawson_tratamientos?.nombre;
+        if (s.estado === 'asistió' && trTexto) {
+            trTexto.split(',').map(t => t.trim()).filter(Boolean).forEach(name => {
+                stats.tratamientos[name] = (stats.tratamientos[name] || 0) + 1;
+            });
+        }
     });
 
     (pacientes || []).forEach(p => {

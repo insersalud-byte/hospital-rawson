@@ -20,7 +20,7 @@ module.exports = async (req, res) => {
                 .eq('paciente_id', parseId(parts[1]))
                 .order('fecha', { ascending: false });
             if (error) throw error;
-            return res.json(data.map(s => ({ ...s, tratamiento_nombre: s.tratamiento?.nombre })));
+            return res.json(data.map(s => ({ ...s, tratamiento_nombre: s.tratamientos_texto || s.tratamiento?.nombre || null })));
         }
 
         // GET /api/sessions
@@ -51,7 +51,7 @@ module.exports = async (req, res) => {
 
         // POST /api/sessions
         if (req.method === 'POST') {
-            const { paciente_id, fecha, hora, kinesiologo_id, kinesiologo_nombre_snapshot, estado, tratamiento_id, patologia_id, observaciones } = req.body;
+            const { paciente_id, fecha, hora, kinesiologo_id, kinesiologo_nombre_snapshot, estado, tratamiento_id, patologia_id, observaciones, tratamientos_texto } = req.body;
             const { error } = await supabase.from('rawson_sesiones').insert({
                 paciente_id: parseId(paciente_id),
                 fecha,
@@ -62,6 +62,7 @@ module.exports = async (req, res) => {
                 tratamiento_id: parseId(tratamiento_id),
                 patologia_id: parseId(patologia_id),
                 observaciones,
+                tratamientos_texto: tratamientos_texto || null,
                 created_at: new Date().toISOString()
             });
             if (error) throw error;
@@ -70,12 +71,13 @@ module.exports = async (req, res) => {
 
         // PUT /api/sessions/:id
         if (req.method === 'PUT' && parts[0]) {
-            const { estado, tratamiento_id, observaciones, kinesiologo_nombre_snapshot } = req.body;
+            const { estado, tratamiento_id, observaciones, kinesiologo_nombre_snapshot, tratamientos_texto } = req.body;
             const { error } = await supabase.from('rawson_sesiones').update({
                 estado,
                 tratamiento_id: parseId(tratamiento_id),
                 observaciones: observaciones || null,
                 kinesiologo_nombre_snapshot: kinesiologo_nombre_snapshot || null,
+                tratamientos_texto: tratamientos_texto || null,
                 updated_at: new Date().toISOString()
             }).eq('id', parseId(parts[0]));
             if (error) throw error;

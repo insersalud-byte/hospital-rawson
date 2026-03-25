@@ -14,7 +14,7 @@ const PatientPanel = ({ patient, onClose, onSaved }) => {
     const [loadingHistory, setLoadingHistory] = useState(true);
     const [mode, setMode] = useState('history'); // 'history' | 'atender'
     const [treatments, setTreatments] = useState([]);
-    const [selectedTreatment, setSelectedTreatment] = useState('');
+    const [selectedTreatments, setSelectedTreatments] = useState(new Set());
     const [observaciones, setObservaciones] = useState('');
     const [notasExtra, setNotasExtra] = useState('');
     const [saving, setSaving] = useState(false);
@@ -79,9 +79,12 @@ const PatientPanel = ({ patient, onClose, onSaved }) => {
             if (sessionId) {
                 await axios.put(`${API_URL}/sessions/${sessionId}`, {
                     estado,
-                    tratamiento_id: selectedTreatment || null,
+                    tratamiento_id: selectedTreatments.size > 0 ? [...selectedTreatments][0] : null,
                     observaciones: obsCompleta,
                     kinesiologo_nombre_snapshot: user?.nombre || 'Kinesiólogo',
+                    tratamientos_texto: selectedTreatments.size > 0
+                        ? [...selectedTreatments].map(id => treatments.find(t => String(t.id) === String(id))?.nombre).filter(Boolean).join(', ')
+                        : null,
                 });
             } else {
                 await axios.post(`${API_URL}/sessions`, {
@@ -89,9 +92,12 @@ const PatientPanel = ({ patient, onClose, onSaved }) => {
                     fecha: new Date().toISOString().split('T')[0],
                     hora: patient.hora || '08:00',
                     estado,
-                    tratamiento_id: selectedTreatment || null,
+                    tratamiento_id: selectedTreatments.size > 0 ? [...selectedTreatments][0] : null,
                     observaciones: obsCompleta,
                     kinesiologo_nombre_snapshot: user?.nombre || 'Kinesiólogo',
+                    tratamientos_texto: selectedTreatments.size > 0
+                        ? [...selectedTreatments].map(id => treatments.find(t => String(t.id) === String(id))?.nombre).filter(Boolean).join(', ')
+                        : null,
                 });
             }
             onSaved();
@@ -271,14 +277,47 @@ const PatientPanel = ({ patient, onClose, onSaved }) => {
                                 )}
                             </div>
 
-                            {/* Tratamiento */}
+                            {/* Tratamientos (Multi-select) */}
                             <div>
-                                <label style={labelStyle}>💊 TRATAMIENTO APLICADO</label>
-                                <select value={selectedTreatment} onChange={e => setSelectedTreatment(e.target.value)} style={selectStyle}>
-                                    <option value="">— Sin tratamiento específico —</option>
-                                    {treatments.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
-                                </select>
+                                <label style={labelStyle}>💊 TRATAMIENTOS APLICADOS (seleccioná uno o varios)</label>
                                 {treatments.length === 0 && <p style={warnStyle}>⚠️ Sin tratamientos. Pedile al Admin que los cargue.</p>}
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '6px' }}>
+                                    {treatments.map(t => {
+                                        const isSelected = selectedTreatments.has(String(t.id));
+                                        return (
+                                            <button
+                                                key={t.id}
+                                                type="button"
+                                                onClick={() => {
+                                                    setSelectedTreatments(prev => {
+                                                        const next = new Set(prev);
+                                                        if (next.has(String(t.id))) next.delete(String(t.id));
+                                                        else next.add(String(t.id));
+                                                        return next;
+                                                    });
+                                                }}
+                                                style={{
+                                                    padding: '8px 16px',
+                                                    borderRadius: '20px',
+                                                    fontSize: '0.85rem',
+                                                    fontWeight: '600',
+                                                    cursor: 'pointer',
+                                                    border: isSelected ? '2px solid #00e676' : '1px solid var(--border)',
+                                                    background: isSelected ? 'rgba(0,230,118,0.15)' : 'rgba(255,255,255,0.05)',
+                                                    color: isSelected ? '#00e676' : 'var(--text-muted)',
+                                                    transition: 'all 0.2s ease'
+                                                }}
+                                            >
+                                                {isSelected ? '✅' : '○'} {t.nombre}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                                {selectedTreatments.size > 0 && (
+                                    <p style={{ fontSize: '0.78rem', color: 'var(--primary)', marginTop: '8px', fontWeight: '600' }}>
+                                        {selectedTreatments.size} tratamiento{selectedTreatments.size !== 1 ? 's' : ''} seleccionado{selectedTreatments.size !== 1 ? 's' : ''}
+                                    </p>
+                                )}
                             </div>
 
                             {/* Observaciones */}
