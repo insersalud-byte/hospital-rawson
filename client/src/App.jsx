@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import axios from 'axios';
+import CustomSelect from './components/ui/CustomSelect';
 import Layout from './components/Layout';
 import PatientList from './features/patients/PatientList';
 import AgendaCalendar from './features/agenda/AgendaCalendar';
@@ -143,21 +144,13 @@ const Login = () => {
                         <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '5px' }}>
                             Seleccioná tu nombre para identificar tus atenciones:
                         </p>
-                        <select
+                        <CustomSelect
                             value={selectedKineId}
                             onChange={e => setSelectedKineId(e.target.value)}
-                            style={{
-                                width: '100%', padding: '14px 16px', borderRadius: '12px',
-                                background: '#111318', color: 'white',
-                                border: '1px solid var(--primary)', fontSize: '1rem', cursor: 'pointer'
-                            }}>
-                            <option value="">— Seleccioná tu nombre —</option>
-                            {professionals.map(p => (
-                                <option key={p.id} value={p.id}>
-                                    {p.nombre}
-                                </option>
-                            ))}
-                        </select>
+                            options={professionals.map(p => ({ value: p.id, label: p.nombre }))}
+                            placeholder="— Seleccioná tu nombre —"
+                            style={{ width: '100%' }}
+                        />
                         {professionals.length === 0 && (
                             <p style={{ color: '#ffea00', fontSize: '0.8rem' }}>
                                 ⚠️ No hay kinesiólogos cargados. Pedile al Administrador que los configure.

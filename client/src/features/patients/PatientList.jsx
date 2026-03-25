@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Plus, Search, Phone, Hospital, MessageCircle, Calendar, ChevronLeft, ChevronRight, Edit } from 'lucide-react';
 import ClinicalSemaphore from '../../components/ui/ClinicalSemaphore';
+import CustomSelect from '../../components/ui/CustomSelect';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, isBefore, startOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -96,14 +97,13 @@ const MultiDateCalendar = ({ selectedDates, onToggleDate, onChangeHora }) => {
                             <span style={{ fontSize: '0.85rem', fontWeight: '600', textTransform: 'capitalize' }}>
                                 📅 {format(entry.date, "EEEE d/MM", { locale: es })}
                             </span>
-                            <select
+                            <CustomSelect
                                 value={entry.hora}
                                 onChange={e => onChangeHora(entry.date, e.target.value)}
-                                style={{ background: '#111318', color: '#e0e0e0', border: '1px solid var(--primary)', borderRadius: '7px', padding: '4px 8px', fontSize: '0.85rem', cursor: 'pointer' }}>
-                                {horariosSlotsList.map(h => (
-                                    <option key={h} value={h}>{h}</option>
-                                ))}
-                            </select>
+                                options={horariosSlotsList.map(h => ({ value: h, label: h }))}
+                                placeholder="Hora"
+                                style={{ width: '130px' }}
+                            />
                         </div>
                     ))}
                 </div>
@@ -381,11 +381,12 @@ const PatientForm = ({ onClose, onSave, patientToEdit }) => {
                             {/* Patología */}
                             <div style={{ marginBottom: '18px' }}>
                                 <label style={labelStyle}>DIAGNÓSTICO / PATOLOGÍA</label>
-                                <select value={formData.patologia} onChange={e => setFormData({ ...formData, patologia: e.target.value })}
-                                    style={selectStyle}>
-                                    <option value="">— Sin patología asignada —</option>
-                                    {pathologies.map(p => <option key={p.id} value={p.nombre}>{p.nombre}</option>)}
-                                </select>
+                                <CustomSelect 
+                                    value={formData.patologia} 
+                                    onChange={e => setFormData({ ...formData, patologia: e.target.value })}
+                                    options={pathologies.map(p => ({ value: p.nombre, label: p.nombre }))}
+                                    placeholder="— Sin patología asignada —"
+                                />
                             </div>
 
                             {/* Derivación */}

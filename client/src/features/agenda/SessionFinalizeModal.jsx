@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import CustomSelect from '../../components/ui/CustomSelect';
 import axios from 'axios';
 import { X, CheckCircle, XCircle, Stethoscope, User } from 'lucide-react';
 
@@ -117,17 +118,15 @@ const SessionFinalizeModal = ({ slot, scheduledPatients, onClose, onSave }) => {
                     {/* Kinesiólogo */}
                     <div>
                         <label style={labelStyle}>🩺 KINESIÓLOGO QUE ATENDIÓ</label>
-                        <select
+                        <CustomSelect
                             value={selectedKine}
                             onChange={e => setSelectedKine(e.target.value)}
-                            style={{ ...selectStyle, borderColor: selectedKine ? 'var(--primary)' : 'var(--border)' }}>
-                            <option value="">— Seleccionar kinesiólogo —</option>
-                            {professionals.map(pro => (
-                                <option key={pro.id} value={pro.id}>
-                                    {pro.nombre}{pro.matricula ? ` (MP ${pro.matricula})` : ''}
-                                </option>
-                            ))}
-                        </select>
+                            options={professionals.map(pro => ({ 
+                                value: pro.id, 
+                                label: pro.nombre + (pro.matricula ? ` (MP ${pro.matricula})` : '')
+                            }))}
+                            placeholder="— Seleccionar kinesiólogo —"
+                        />
                         {professionals.length === 0 && (
                             <p style={warnStyle}>⚠️ No hay kinesiólogos cargados. Ir a Configuración.</p>
                         )}
