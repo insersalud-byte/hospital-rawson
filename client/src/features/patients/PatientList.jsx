@@ -99,7 +99,7 @@ const MultiDateCalendar = ({ selectedDates, onToggleDate, onChangeHora }) => {
                             <select
                                 value={entry.hora}
                                 onChange={e => onChangeHora(entry.date, e.target.value)}
-                                style={{ background: 'rgba(0,0,0,0.4)', color: 'white', border: '1px solid var(--primary)', borderRadius: '7px', padding: '4px 8px', fontSize: '0.85rem', cursor: 'pointer' }}>
+                                style={{ background: '#111318', color: '#e0e0e0', border: '1px solid var(--primary)', borderRadius: '7px', padding: '4px 8px', fontSize: '0.85rem', cursor: 'pointer' }}>
                                 {horariosSlotsList.map(h => (
                                     <option key={h} value={h}>{h}</option>
                                 ))}
