@@ -378,12 +378,62 @@ const textareaStyle = { width: '100%', padding: '12px 14px', borderRadius: '10px
 const btnStyle = { padding: '15px', borderRadius: '12px', fontWeight: '700', fontSize: '0.9rem', cursor: 'pointer', border: 'none', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px' };
 const warnStyle = { fontSize: '0.73rem', color: '#ffea00', marginTop: '5px' };
 
+// ─── Modal Próximos Turnos ───────────────────────────────────────────────────
+const UpcomingAppointmentsModal = ({ onClose }) => {
+    const [upcoming, setUpcoming] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        axios.get(`${API_URL}/sessions`)
+            .then(res => {
+                const now = new Date();
+                const today = startOfDay(now);
+                const list = (res.data || [])
+                    .filter(s => s.estado === 'programado' && new Date(s.fecha + 'T00:00:00') > today)
+                    .sort((a,b) => new Date(a.fecha + 'T' + a.hora) - new Date(b.fecha + 'T' + b.hora));
+                setUpcoming(list.slice(0, 50)); // Mostrar top 50
+            })
+            .catch(() => setUpcoming([]))
+            .finally(() => setLoading(false));
+    }, []);
+
+    return (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px' }}>
+            <div className="premium-card glass-panel" style={{ width: '100%', maxWidth: '500px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ padding: '20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h3 style={{ fontSize: '1.2rem' }}>📅 Próximos Turnos Agendados</h3>
+                    <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.5rem', cursor: 'pointer' }}>✕</button>
+                </div>
+                <div style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
+                    {loading && <p style={{ textAlign: 'center', color: 'var(--text-muted)' }}>Cargando...</p>}
+                    {!loading && upcoming.length === 0 && <p style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No hay turnos futuros programados.</p>}
+                    {!loading && upcoming.map((s, idx) => (
+                        <div key={idx} style={{ padding: '12px', background: 'rgba(255,255,255,0.04)', borderRadius: '10px', marginBottom: '8px', borderLeft: '3px solid var(--primary)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                <span style={{ fontWeight: '700', fontSize: '0.95rem' }}>{s.paciente_nombre} {s.paciente_apellido}</span>
+                                <span style={{ color: 'var(--primary)', fontWeight: '700' }}>{s.hora}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                                <span style={{ textTransform: 'capitalize' }}>🗓️ {format(new Date(s.fecha + 'T00:00:00'), "EEEE d 'de' MMMM", { locale: es })}</span>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                <div style={{ padding: '15px', borderTop: '1px solid var(--border)', textAlign: 'center' }}>
+                    <button onClick={onClose} className="vibrant-gradient" style={{ padding: '10px 30px', borderRadius: '10px', border: 'none', color: 'white', fontWeight: '700', cursor: 'pointer' }}>ENTENDIDO</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // ─── Agenda Principal ─────────────────────────────────────────────────────────
 const AgendaCalendar = () => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [appointments, setAppointments] = useState({});
     const [loading, setLoading] = useState(true);
     const [activePatient, setActivePatient] = useState(null);
+    const [showUpcoming, setShowUpcoming] = useState(false);
 
     useEffect(() => { fetchAgendaData(); }, [currentDate]);
 
@@ -450,9 +500,14 @@ const AgendaCalendar = () => {
                             onClick={() => setCurrentDate(addMinutes(currentDate, 1440))}><ChevronRight size={17} /></button>
                     </div>
                 </div>
-                <div className="glass-panel" style={{ padding: '8px 18px', display: 'flex', alignItems: 'center', gap: '8px', borderRadius: '10px', fontSize: '0.88rem' }}>
-                    <Users size={16} color="var(--primary)" />
-                    <strong style={{ color: 'var(--primary)' }}>{totalHoy}</strong> paciente{totalHoy !== 1 ? 's' : ''} hoy
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <button onClick={() => setShowUpcoming(true)} className="glass-panel" style={{ padding: '8px 18px', display: 'flex', alignItems: 'center', gap: '8px', borderRadius: '10px', fontSize: '0.85rem', cursor: 'pointer', border: '1px solid var(--primary)', color: 'var(--primary)', fontWeight: '700' }}>
+                        📅 VER PRÓXIMOS TURNOS
+                    </button>
+                    <div className="glass-panel" style={{ padding: '8px 18px', display: 'flex', alignItems: 'center', gap: '8px', borderRadius: '10px', fontSize: '0.88rem' }}>
+                        <Users size={16} color="var(--primary)" />
+                        <strong style={{ color: 'var(--primary)' }}>{totalHoy}</strong> paciente{totalHoy !== 1 ? 's' : ''} hoy
+                    </div>
                 </div>
             </div>
 
@@ -495,6 +550,10 @@ const AgendaCalendar = () => {
                     onClose={() => setActivePatient(null)}
                     onSaved={() => { fetchAgendaData(); setActivePatient(null); }}
                 />
+            )}
+
+            {showUpcoming && (
+                <UpcomingAppointmentsModal onClose={() => setShowUpcoming(false)} />
             )}
         </div>
     );

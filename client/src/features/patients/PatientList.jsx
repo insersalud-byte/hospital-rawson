@@ -13,6 +13,78 @@ const horariosSlotsList = [
     '14:00', '14:45', '15:30', '16:15', '17:00', '17:45'
 ];
 
+// ─── Historial del Paciente (Componente Expansible) ───────────────────────────
+const PatientHistory = ({ patient }) => {
+    const [sessions, setSessions] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        axios.get(`${API_URL}/sessions/patient/${patient.id}`)
+            .then(res => setSessions(res.data || []))
+            .catch(() => setSessions([]))
+            .finally(() => setLoading(false));
+    }, [patient.id]);
+
+    if (loading) return <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center', padding: '10px' }}>⏳ Cargando historial...</p>;
+
+    const asistidas = sessions.filter(s => s.estado === 'asistió');
+    const hoy = startOfDay(new Date());
+    const faltantes = sessions.filter(s => s.estado === 'programado' && (new Date(s.fecha + 'T00:00:00') >= hoy));
+    const faltadas = sessions.filter(s => s.estado === 'no asistió');
+    
+    // Obtener todos los nombres de tratamientos únicos
+    const tratamientos = [...new Set(asistidas.flatMap(s => 
+        (s.tratamientos_texto || s.tratamiento_nombre || '').split(',').map(t => t.trim()).filter(Boolean)
+    ))];
+
+    return (
+        <div style={{ marginTop: '15px', padding: '15px', background: 'rgba(0,0,0,0.3)', borderRadius: '12px', border: '1px solid var(--border)', fontSize: '0.85rem' }}>
+            <h4 style={{ fontSize: '0.9rem', color: 'var(--primary)', marginBottom: '10px' }}>📊 RESUMEN DE TRATAMIENTO</h4>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
+                <div style={{ background: 'rgba(255,255,255,0.03)', padding: '8px', borderRadius: '8px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.65rem', marginBottom: '4px' }}>DADAS</p>
+                    <p style={{ fontSize: '1.2rem', fontWeight: '800', color: '#00e676' }}>{asistidas.length}</p>
+                </div>
+                <div style={{ background: 'rgba(255,255,255,0.03)', padding: '8px', borderRadius: '8px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.65rem', marginBottom: '4px' }}>FALTÓ</p>
+                    <p style={{ fontSize: '1.2rem', fontWeight: '800', color: '#ff5252' }}>{faltadas.length}</p>
+                </div>
+                <div style={{ background: 'rgba(255,255,255,0.03)', padding: '8px', borderRadius: '8px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.65rem', marginBottom: '4px' }}>PRÓXIMAS</p>
+                    <p style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--primary)' }}>{faltantes.length}</p>
+                </div>
+                <div style={{ background: 'rgba(255,255,255,0.03)', padding: '8px', borderRadius: '8px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.65rem', marginBottom: '4px' }}>HISTORIAL</p>
+                    <p style={{ fontSize: '1.2rem', fontWeight: '800' }}>{sessions.length}</p>
+                </div>
+            </div>
+
+            {tratamientos.length > 0 && (
+                <div style={{ marginBottom: '12px' }}>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', marginBottom: '6px' }}>TRATAMIENTOS RECIBIDOS:</p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                        {tratamientos.map((t, idx) => (
+                            <span key={idx} style={{ padding: '3px 8px', borderRadius: '4px', background: 'rgba(0,136,204,0.15)', border: '1px solid var(--primary)', fontSize: '0.73rem', color: 'white' }}>{t}</span>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {asistidas.length > 0 && (
+                <div>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', marginBottom: '6px' }}>📝 ÚLTIMAS EVOLUCIONES:</p>
+                    {asistidas.slice(0, 3).map((s, idx) => s.observaciones && (
+                        <div key={idx} style={{ padding: '8px', fontSize: '0.78rem', borderLeft: '3px solid var(--primary)', background: 'rgba(255,255,255,0.02)', marginBottom: '6px', borderRadius: '0 6px 6px 0' }}>
+                            <strong>{format(new Date(s.fecha + 'T00:00:00'), 'd/MM')}:</strong> {s.observaciones.substring(0, 100)}{s.observaciones.length > 100 ? '...' : ''}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
 // ─── Mini Calendario Multi-Selección ─────────────────────────────────────────
 // selectedDates: Array de { date: Date, hora: string }
 const MultiDateCalendar = ({ selectedDates, onToggleDate, onChangeHora }) => {
@@ -140,12 +212,22 @@ const PatientList = () => {
         window.open(`https://wa.me/${num}?text=${msg}`, '_blank');
     };
 
+    const [expandedHistoryId, setExpandedHistoryId] = useState(null);
+
     return (
         <div className="patients-container">
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '30px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h2 style={{ fontSize: '1.4rem' }}>Registro de Pacientes</h2>
-                    <button onClick={() => { setPatientToEdit(null); setShowForm(true); }} className="vibrant-gradient"
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                        <h2 style={{ fontSize: '1.4rem' }}>Registro de Pacientes</h2>
+                        {expandedHistoryId && (
+                            <button onClick={() => setExpandedHistoryId(null)} 
+                                style={{ padding: '6px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', fontSize: '0.75rem', cursor: 'pointer' }}>
+                                Cerrar Historiales
+                            </button>
+                        )}
+                    </div>
+                    <button onClick={() => { setPatientToEdit(null); setShowForm(true); }} className="vibrant-gradient" 
                         style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', borderRadius: '12px', fontWeight: '700', border: 'none', cursor: 'pointer', color: 'white' }}>
                         <Plus size={18} /> Nuevo Paciente
                     </button>
@@ -176,10 +258,14 @@ const PatientList = () => {
                                 <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>HC: {patient.historia_clinica}</p>
                             </div>
                             <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                                <ClinicalSemaphore lostSessionsCount={patient.sesiones_perdidas || 0} />
+                                <button onClick={() => setExpandedHistoryId(expandedHistoryId === patient.id ? null : patient.id)}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '6px', background: expandedHistoryId === patient.id ? 'var(--primary)' : 'rgba(255,255,255,0.08)', border: '1px solid var(--border)', color: 'white', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}
+                                    title="Ver historial y estadísticas">
+                                    📋 Historial
+                                </button>
                                 <button onClick={() => { setPatientToEdit(patient); setShowForm(true); }}
                                     style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.08)', border: '1px solid var(--border)', color: 'white', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}
-                                    title="Modificar Paciente">
+                                    title="Modificar Pacientes">
                                     <Edit size={14} /> Modificar
                                 </button>
                                 <button onClick={() => { setPatientToEdit(patient); setShowForm(true); }}
@@ -200,6 +286,8 @@ const PatientList = () => {
                                 </div>
                             )}
                         </div>
+
+                        {expandedHistoryId === patient.id && <PatientHistory patient={patient} />}
 
                         {patient.whatsapp && (
                             <button onClick={() => openWhatsApp(patient)} style={{
