@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Plus, Search, Phone, Hospital, MessageCircle, Calendar, ChevronLeft, ChevronRight, Edit } from 'lucide-react';
+import { Plus, Search, Phone, Hospital, MessageCircle, Calendar, ChevronLeft, ChevronRight, Edit, Trash2 } from 'lucide-react';
 import ClinicalSemaphore from '../../components/ui/ClinicalSemaphore';
 import CustomSelect from '../../components/ui/CustomSelect';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, isBefore, startOfDay } from 'date-fns';
@@ -192,6 +192,16 @@ const PatientList = () => {
         String(p.historia_clinica || '').includes(searchTerm)
     );
 
+    const deletePatient = async (id, nombre) => {
+        if (!window.confirm(`¿Eliminar a ${nombre}? Se borrarán sus turnos pendientes.`)) return;
+        try {
+            await axios.delete(`${API_URL}/patients/${id}`);
+            await fetchPatients();
+        } catch (err) {
+            alert(err.response?.data?.error || err.message || 'No se pudo eliminar');
+        }
+    };
+
     const openWhatsApp = (patient) => {
         if (!patient.whatsapp) { alert('Este paciente no tiene WhatsApp cargado.'); return; }
         const num = patient.whatsapp.replace(/\D/g, '');
@@ -250,9 +260,14 @@ const PatientList = () => {
                                     title="Ver historial y estadísticas">
                                     📋 Historial
                                 </button>
+                                <button onClick={() => deletePatient(patient.id, `${patient.nombre} ${patient.apellido}`)}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(255,82,82,0.1)', border: '1px solid #ff5252', color: '#ff5252', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}
+                                    title="Eliminar paciente">
+                                    <Trash2 size={14} />
+                                </button>
                                 <button onClick={() => { setPatientToEdit(patient); setShowForm(true); }}
                                     style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.08)', border: '1px solid var(--border)', color: 'white', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}
-                                    title="Modificar Pacientes">
+                                    title="Modificar Paciente">
                                     <Edit size={14} /> Modificar
                                 </button>
                                 <button onClick={() => { setPatientToEdit(patient); setShowForm(true); }}
@@ -392,9 +407,10 @@ const PatientForm = ({ onClose, onSave, patientToEdit }) => {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             zIndex: 9999, padding: '15px'
         }}>
-            <div className="premium-card glass-panel" style={{
+            <div className="premium-card" style={{
                 width: '100%', maxWidth: '700px', maxHeight: '92vh',
                 overflowY: 'auto', padding: '30px',
+                background: '#1a1e26', border: '1px solid var(--border)',
                 borderTop: savedOk ? '4px solid #00e676' : '4px solid var(--primary)'
             }}>
                 {savedOk ? (

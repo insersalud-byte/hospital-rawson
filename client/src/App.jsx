@@ -90,9 +90,12 @@ const Dashboard = () => {
         setDeletingId(id);
         try {
             await axios.delete(`${API_URL}/patients/${id}`);
-            await fetchData();
+            // Actualizar estado local sin refetch para evitar falsos errores de red
+            setPatients(prev => prev.filter(p => String(p.id) !== String(id)));
+            setSessions(prev => prev.filter(s => String(s.paciente_id) !== String(id)));
         } catch (err) {
-            alert(err.response?.data?.error || 'Error al eliminar');
+            alert(err.response?.data?.error || err.message || 'Error al eliminar');
+        } finally {
             setDeletingId(null);
         }
     };

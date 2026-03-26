@@ -137,10 +137,11 @@ const PatientPanel = ({ patient, onClose, onSaved }) => {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             zIndex: 9999, padding: '15px'
         }}>
-            <div className="premium-card glass-panel" style={{
+            <div className="premium-card" style={{
                 width: '100%', maxWidth: '640px', maxHeight: '90vh',
                 display: 'flex', flexDirection: 'column',
-                borderTop: '4px solid var(--primary)'
+                borderTop: '4px solid var(--primary)',
+                background: '#1a1e26', border: '1px solid var(--border)'
             }}>
                 {/* Header */}
                 <div style={{ padding: '22px 28px', borderBottom: '1px solid var(--border)' }}>
@@ -446,14 +447,17 @@ const AgendaCalendar = () => {
                 axios.get(`${API_URL}/sessions`)
             ]);
             const dateStr = format(currentDate, 'yyyy-MM-dd');
-            const daySessions = (resSessions.data || []).filter(s => s.fecha === dateStr && s.estado === 'programado');
+            const validSlots = new Set(['08:00','08:45','09:30','10:15','11:00','11:45','12:30','13:15','14:00','14:45','15:30','16:15','17:00','17:45']);
+            const daySessions = (resSessions.data || []).filter(s => s.fecha === dateStr && s.estado === 'programado' && s.paciente_id);
             const newApt = {};
             daySessions.forEach(session => {
                 const horaFull = session.hora || '08:00';
-                const hora = horaFull.substring(0, 5); // Ensure HH:mm format
+                const hora = horaFull.substring(0, 5);
+                if (!validSlots.has(hora)) return; // saltear horas fuera de los slots
                 const patient = (resPatients.data || []).find(p => String(p.id) === String(session.paciente_id));
+                if (!patient) return; // saltear si paciente no existe
                 const count = Object.keys(newApt).filter(k => k.startsWith(`${hora}-`)).length;
-                if (patient && count < 10) { // Allow more than 2 if needed, but slots only show 2
+                if (count < 10) {
                     newApt[`${hora}-${count}`] = { ...patient, sessionId: session.id, hora };
                 }
             });
