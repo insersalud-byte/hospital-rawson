@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "cd client && npx vite build"
+    "build": "cd client && npx vite build --outDir ../dist"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.90.1",

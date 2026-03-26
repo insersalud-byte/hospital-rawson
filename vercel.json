@@ -14,8 +14,8 @@
     { "src": "/api/sessions/(.*)", "dest": "/api/sessions.js" },
     { "src": "/api/sessions", "dest": "/api/sessions.js" },
     { "src": "/api/stats/summary", "dest": "/api/stats.js" },
-    { "src": "/assets/(.*)", "dest": "/client/dist/assets/$1" },
-    { "src": "/(.*)\\.(.+)$", "dest": "/client/dist/$1.$2" },
-    { "src": "/(.*)", "dest": "/client/dist/index.html" }
+    { "src": "/assets/(.*)", "dest": "/dist/assets/$1" },
+    { "src": "/(.*)\\.(.+)$", "dest": "/dist/$1.$2" },
+    { "src": "/(.*)", "dest": "/dist/index.html" }
   ]
 }
