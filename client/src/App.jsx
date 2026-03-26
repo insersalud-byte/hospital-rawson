@@ -8,30 +8,195 @@ import PatientList from './features/patients/PatientList';
 import AgendaCalendar from './features/agenda/AgendaCalendar';
 import StatsDashboard from './features/statistics/StatsDashboard';
 import ConfigPage from './features/config/ConfigPage';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import './styles/Global.css';
 
 const API_URL = import.meta.env.MODE === 'development' ? 'http://localhost:3005/api' : '/api';
 
 // ─── Dashboard Admin ──────────────────────────────────────────────────────────
-const Dashboard = () => (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
-        <div className="premium-card vibrant-gradient" style={{ height: '280px', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '40px' }}>
-            <h1 style={{ fontSize: '2.2rem', marginBottom: '10px' }}>Panel de Control (V5 - Eliminar Kinesiólogo)</h1>
-            <p style={{ fontSize: '1.1rem', opacity: 0.9 }}>Gestión clínica — Hospital Rawson Kinesiología.</p>
+const SLOTS_MANANA = ['08:00', '08:45', '09:30', '10:15', '11:00', '11:45'];
+const SLOTS_TARDE  = ['14:00', '14:45', '15:30', '16:15', '17:00', '17:45'];
+
+const calcFreeSlots = (daySessions) => {
+    let manana = 0, tarde = 0;
+    SLOTS_MANANA.forEach(slot => {
+        const used = daySessions.filter(s => (s.hora || '').substring(0, 5) === slot).length;
+        manana += Math.max(0, 2 - used);
+    });
+    SLOTS_TARDE.forEach(slot => {
+        const used = daySessions.filter(s => (s.hora || '').substring(0, 5) === slot).length;
+        tarde += Math.max(0, 2 - used);
+    });
+    return { manana, tarde };
+};
+
+const Dashboard = () => {
+    const [loading, setLoading] = useState(true);
+    const [sesionesHoy, setSesionesHoy] = useState(0);
+    const [libresManana, setLibresManana] = useState(0);
+    const [libresTarde, setLibresTarde] = useState(0);
+    const [proxDia, setProxDia] = useState(null);
+    const [patients, setPatients] = useState([]);
+    const [sessions, setSessions] = useState([]);
+    const [deletingId, setDeletingId] = useState(null);
+
+    useEffect(() => { fetchData(); }, []);
+
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            const [resSes, resPat] = await Promise.all([
+                axios.get(`${API_URL}/sessions`),
+                axios.get(`${API_URL}/patients`)
+            ]);
+            const allSessions = resSes.data || [];
+            const allPatients = resPat.data || [];
+            setSessions(allSessions);
+            setPatients(allPatients);
+
+            const todayStr = new Date().toISOString().split('T')[0];
+            const todaySess = allSessions.filter(s => s.fecha === todayStr && s.estado === 'programado');
+            setSesionesHoy(todaySess.length);
+
+            const { manana, tarde } = calcFreeSlots(todaySess);
+            setLibresManana(manana);
+            setLibresTarde(tarde);
+
+            if (manana + tarde === 0) {
+                let found = null;
+                for (let i = 1; i <= 14; i++) {
+                    const d = new Date();
+                    d.setDate(d.getDate() + i);
+                    if (d.getDay() === 0) continue; // skip Sunday
+                    const dStr = d.toISOString().split('T')[0];
+                    const dSess = allSessions.filter(s => s.fecha === dStr && s.estado === 'programado');
+                    const { manana: m, tarde: t } = calcFreeSlots(dSess);
+                    if (m + t > 0) { found = { fecha: d, manana: m, tarde: t }; break; }
+                }
+                setProxDia(found);
+            } else {
+                setProxDia(null);
+            }
+        } catch (err) {
+            console.error('Dashboard error:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const deletePatient = async (id, nombre) => {
+        if (!window.confirm(`¿Eliminar a ${nombre}? Se borrarán sus turnos pendientes.`)) return;
+        setDeletingId(id);
+        try {
+            await axios.delete(`${API_URL}/patients/${id}`);
+            await fetchData();
+        } catch (err) {
+            alert(err.response?.data?.error || 'Error al eliminar');
+            setDeletingId(null);
+        }
+    };
+
+    const deletablePatients = patients.filter(p =>
+        !sessions.some(s => String(s.paciente_id) === String(p.id) && s.estado === 'asistió')
+    );
+    const totalLibresHoy = libresManana + libresTarde;
+
+    if (loading) return <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>⏳ Cargando panel...</div>;
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+
+            {/* Fila 1: Header + stat cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '22px' }}>
+                <div className="premium-card vibrant-gradient" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '36px' }}>
+                    <h1 style={{ fontSize: '1.8rem', marginBottom: '8px' }}>Hospital Rawson</h1>
+                    <p style={{ fontSize: '1rem', opacity: 0.9 }}>Servicio de Kinesiología</p>
+                    <p style={{ fontSize: '0.82rem', opacity: 0.7, marginTop: '8px', textTransform: 'capitalize' }}>
+                        {format(new Date(), "EEEE d 'de' MMMM yyyy", { locale: es })}
+                    </p>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <StatCard title="Sesiones Hoy" value={sesionesHoy} color="var(--primary)" />
+                    <StatCard title="Total Pacientes" value={patients.length} color="var(--success)" />
+                    <StatCard title="Cupos Libres Hoy" value={totalLibresHoy} color={totalLibresHoy > 0 ? 'var(--accent)' : '#ff5252'} />
+                    <StatCard title="Sin Atender" value={deletablePatients.length} color="var(--warning)" />
+                </div>
+            </div>
+
+            {/* Fila 2: Cupos mañana / tarde / próximo día */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '18px' }}>
+                <div className="premium-card glass-panel" style={{ textAlign: 'center', borderTop: `4px solid ${libresManana > 0 ? '#00e5ff' : '#ff5252'}` }}>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.73rem', fontWeight: '700', letterSpacing: '0.5px', marginBottom: '10px' }}>☀️ CUPOS MAÑANA — HOY</p>
+                    <p style={{ fontSize: '2.6rem', fontWeight: '800', color: libresManana > 0 ? '#00e5ff' : '#ff5252', lineHeight: 1 }}>{libresManana}</p>
+                    <p style={{ fontSize: '0.73rem', color: 'var(--text-muted)', marginTop: '6px' }}>08:00 – 12:45 hs</p>
+                </div>
+                <div className="premium-card glass-panel" style={{ textAlign: 'center', borderTop: `4px solid ${libresTarde > 0 ? '#00e5ff' : '#ff5252'}` }}>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.73rem', fontWeight: '700', letterSpacing: '0.5px', marginBottom: '10px' }}>🌙 CUPOS TARDE — HOY</p>
+                    <p style={{ fontSize: '2.6rem', fontWeight: '800', color: libresTarde > 0 ? '#00e5ff' : '#ff5252', lineHeight: 1 }}>{libresTarde}</p>
+                    <p style={{ fontSize: '0.73rem', color: 'var(--text-muted)', marginTop: '6px' }}>14:00 – 17:45 hs</p>
+                </div>
+                <div className="premium-card glass-panel" style={{ textAlign: 'center', borderTop: '4px solid var(--primary)' }}>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.73rem', fontWeight: '700', letterSpacing: '0.5px', marginBottom: '10px' }}>📅 PRÓXIMO DÍA DISPONIBLE</p>
+                    {totalLibresHoy > 0 ? (
+                        <>
+                            <p style={{ fontSize: '1.1rem', fontWeight: '800', color: '#00e676' }}>HOY</p>
+                            <p style={{ fontSize: '0.73rem', color: 'var(--text-muted)', marginTop: '6px' }}>Hay cupos disponibles hoy</p>
+                        </>
+                    ) : proxDia ? (
+                        <>
+                            <p style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--primary)', textTransform: 'capitalize' }}>
+                                {format(proxDia.fecha, "EEEE d/MM", { locale: es })}
+                            </p>
+                            <p style={{ fontSize: '0.73rem', color: 'var(--text-muted)', marginTop: '6px' }}>
+                                {proxDia.manana > 0 ? `☀️ ${proxDia.manana} mañana` : ''}
+                                {proxDia.manana > 0 && proxDia.tarde > 0 ? ' · ' : ''}
+                                {proxDia.tarde > 0 ? `🌙 ${proxDia.tarde} tarde` : ''}
+                            </p>
+                        </>
+                    ) : (
+                        <p style={{ fontSize: '0.88rem', fontWeight: '700', color: '#ff5252', marginTop: '6px' }}>Sin cupos en 14 días</p>
+                    )}
+                </div>
+            </div>
+
+            {/* Fila 3: Papelera de pacientes sin atender */}
+            {deletablePatients.length > 0 && (
+                <div className="premium-card glass-panel">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                        <span style={{ fontSize: '1.2rem' }}>🗑️</span>
+                        <h3 style={{ fontSize: '1rem' }}>Papelera — Pacientes sin atender</h3>
+                        <span style={{ background: 'rgba(255,82,82,0.15)', color: '#ff5252', border: '1px solid #ff5252', borderRadius: '20px', padding: '2px 10px', fontSize: '0.75rem', fontWeight: '700' }}>
+                            {deletablePatients.length}
+                        </span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '4px' }}>— no tienen sesiones atendidas</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '8px', maxHeight: '260px', overflowY: 'auto' }}>
+                        {deletablePatients.map(p => (
+                            <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                                <div>
+                                    <p style={{ fontWeight: '600', fontSize: '0.88rem' }}>{p.nombre} {p.apellido}</p>
+                                    <p style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>HC: {p.historia_clinica || '—'}</p>
+                                </div>
+                                <button
+                                    onClick={() => deletePatient(p.id, `${p.nombre} ${p.apellido}`)}
+                                    disabled={deletingId === p.id}
+                                    style={{ background: 'rgba(255,82,82,0.12)', border: '1px solid #ff5252', color: '#ff5252', padding: '6px 12px', borderRadius: '8px', cursor: deletingId === p.id ? 'not-allowed' : 'pointer', fontSize: '0.8rem', fontWeight: '700', whiteSpace: 'nowrap' }}>
+                                    {deletingId === p.id ? '...' : '🗑 Eliminar'}
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-            <StatCard title="Pacientes Activos" value="—" color="var(--success)" />
-            <StatCard title="Sesiones Hoy" value="—" color="var(--primary)" />
-            <StatCard title="Cupos Libres" value="—" color="var(--accent)" />
-            <StatCard title="Pendientes WA" value="—" color="var(--warning)" />
-        </div>
-    </div>
-);
+    );
+};
 
 const StatCard = ({ title, value, color }) => (
     <div className="premium-card glass-panel" style={{ textAlign: 'center' }}>
-        <h3 style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '10px' }}>{title}</h3>
-        <p style={{ fontSize: '1.9rem', fontWeight: 'bold', color }}>{value}</p>
+        <h3 style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '8px', fontWeight: '700', letterSpacing: '0.3px' }}>{title}</h3>
+        <p style={{ fontSize: '2rem', fontWeight: '800', color }}>{value}</p>
     </div>
 );
 

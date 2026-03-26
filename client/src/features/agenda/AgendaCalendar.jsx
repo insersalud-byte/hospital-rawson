@@ -119,7 +119,8 @@ const PatientPanel = ({ patient, onClose, onSaved }) => {
             onClose();
         } catch (err) {
             console.error('Error cancelando turno:', err);
-            alert('Error al cancelar. Por favor reintentá.');
+            const msg = err.response?.data?.error || err.message || 'Error desconocido';
+            alert(`Error al cancelar turno: ${msg}`);
             setSaving(false);
         }
     };
@@ -153,12 +154,12 @@ const PatientPanel = ({ patient, onClose, onSaved }) => {
                             </p>
                         </div>
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                            {user?.role === 'ADMIN' && patient.sessionId && (
+                            {patient.sessionId && (
                                 <button onClick={handleDeleteTurno} disabled={saving} style={{
                                     background: 'rgba(255,82,82,0.1)', border: '1px solid #ff5252', color: '#ff5252',
                                     padding: '8px 14px', borderRadius: '8px', cursor: saving ? 'not-allowed' : 'pointer',
                                     fontWeight: '600', fontSize: '0.85rem'
-                                }} title="Eliminar este turno (Solo Admin)">
+                                }} title="Eliminar este turno">
                                     🗑️ Cancelar Turno
                                 </button>
                             )}
