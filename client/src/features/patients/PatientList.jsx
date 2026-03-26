@@ -86,8 +86,8 @@ const PatientHistory = ({ patient }) => {
 };
 
 // ─── Mini Calendario Multi-Selección ─────────────────────────────────────────
-// selectedDates: Array de { date: Date, hora: string }
-const MultiDateCalendar = ({ selectedDates, onToggleDate, onChangeHora }) => {
+// selectedDates: Array de Date
+const MultiDateCalendar = ({ selectedDates, onToggleDate }) => {
     const [viewMonth, setViewMonth] = useState(new Date());
     const today = startOfDay(new Date());
 
@@ -129,8 +129,7 @@ const MultiDateCalendar = ({ selectedDates, onToggleDate, onChangeHora }) => {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '3px' }}>
                 {Array.from({ length: firstDayOfWeek }).map((_, i) => <div key={`empty-${i}`} />)}
                 {daysInMonth.map(day => {
-                    const entry = selectedDates.find(d => isSameDay(d.date, day));
-                    const isSelected = !!entry;
+                    const isSelected = selectedDates.some(d => isSameDay(d, day));
                     const isPast = isBefore(day, today);
                     const isToday = isSameDay(day, today);
 
@@ -158,25 +157,13 @@ const MultiDateCalendar = ({ selectedDates, onToggleDate, onChangeHora }) => {
                 })}
             </div>
 
-            {/* Lista de días seleccionados con selector de hora individual */}
+            {/* Resumen de días seleccionados */}
             {selectedDates.length > 0 && (
-                <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '7px' }}>
-                    <p style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--primary)', marginBottom: '2px', letterSpacing: '0.4px' }}>
-                        ASIGNAR HORARIO POR DÍA
-                    </p>
-                    {[...selectedDates].sort((a, b) => a.date - b.date).map(entry => (
-                        <div key={entry.date.toISOString()} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,136,204,0.1)', borderRadius: '9px', padding: '7px 12px', border: '1px solid var(--primary)' }}>
-                            <span style={{ fontSize: '0.85rem', fontWeight: '600', textTransform: 'capitalize' }}>
-                                📅 {format(entry.date, "EEEE d/MM", { locale: es })}
-                            </span>
-                            <CustomSelect
-                                value={entry.hora}
-                                onChange={e => onChangeHora(entry.date, e.target.value)}
-                                options={horariosSlotsList.map(h => ({ value: h, label: h }))}
-                                placeholder="Hora"
-                                style={{ width: '130px' }}
-                            />
-                        </div>
+                <div style={{ marginTop: '12px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {[...selectedDates].sort((a, b) => a - b).map(d => (
+                        <span key={d.toISOString()} style={{ padding: '4px 10px', background: 'rgba(0,136,204,0.15)', border: '1px solid var(--primary)', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '600', textTransform: 'capitalize' }}>
+                            📅 {format(d, "EEE d/MM", { locale: es })}
+                        </span>
                     ))}
                 </div>
             )}
@@ -319,6 +306,7 @@ const PatientForm = ({ onClose, onSave, patientToEdit }) => {
     });
     const [pathologies, setPathologies] = useState([]);
     const [selectedDates, setSelectedDates] = useState([]);
+    const [horaTurno, setHoraTurno] = useState('08:00');
     const [saving, setSaving] = useState(false);
     const [savedOk, setSavedOk] = useState(false);
     const [waLink, setWaLink] = useState(null);
@@ -331,14 +319,10 @@ const PatientForm = ({ onClose, onSave, patientToEdit }) => {
 
     const toggleDate = (day) => {
         setSelectedDates(prev => {
-            const exists = prev.some(d => isSameDay(d.date, day));
-            if (exists) return prev.filter(d => !isSameDay(d.date, day));
-            return [...prev, { date: day, hora: '08:00' }].sort((a, b) => a.date - b.date);
+            const exists = prev.some(d => isSameDay(d, day));
+            if (exists) return prev.filter(d => !isSameDay(d, day));
+            return [...prev, day].sort((a, b) => a - b);
         });
-    };
-
-    const changeHora = (day, hora) => {
-        setSelectedDates(prev => prev.map(d => isSameDay(d.date, day) ? { ...d, hora } : d));
     };
 
     const handleSubmit = async (e) => {
@@ -358,10 +342,10 @@ const PatientForm = ({ onClose, onSave, patientToEdit }) => {
 
             let sesionesNuevas = 0;
             if (selectedDates.length > 0) {
-                const sesiones = selectedDates.map(entry => ({
+                const sesiones = selectedDates.map(d => ({
                     paciente_id: patientId,
-                    fecha: format(entry.date, 'yyyy-MM-dd'),
-                    hora: entry.hora,
+                    fecha: format(d, 'yyyy-MM-dd'),
+                    hora: horaTurno,
                     estado: 'programado'
                 }));
                 await axios.post(`${API_URL}/sessions/batch`, { sesiones });
@@ -372,7 +356,7 @@ const PatientForm = ({ onClose, onSave, patientToEdit }) => {
                 const num = formData.whatsapp.replace(/\D/g, '');
                 if (sesionesNuevas > 0) {
                     const turnosTexto = selectedDates
-                        .map(entry => `📅 ${format(entry.date, "EEEE d/MM", { locale: es })} a las ${entry.hora} hs`)
+                        .map(d => `📅 ${format(d, "EEEE d/MM", { locale: es })} a las ${horaTurno} hs`)
                         .join('\n');
                     const mensaje = `¡Hola ${formData.nombre}! 👋 Te confirmamos tus turnos de Kinesiología en Hospital Rawson:\n\n${turnosTexto}\n\nTotal: ${sesionesNuevas} sesión${sesionesNuevas !== 1 ? 'es' : ''} programada${sesionesNuevas !== 1 ? 's' : ''}.\n\nAnte cualquier duda contactanos. ¡Te esperamos! 🏥`;
                     setWaLink(`https://wa.me/${num}?text=${encodeURIComponent(mensaje)}`);
@@ -422,8 +406,8 @@ const PatientForm = ({ onClose, onSave, patientToEdit }) => {
                             <strong>{formData.nombre} {formData.apellido}</strong> — {selectedDates.length} sesión{selectedDates.length !== 1 ? 'es' : ''} programada{selectedDates.length !== 1 ? 's' : ''}
                         </p>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', margin: '15px 0 20px', fontSize: '0.88rem', color: 'var(--text-muted)' }}>
-                            {selectedDates.map((entry, i) => (
-                                <span key={i}>📅 {format(entry.date, "EEEE d/MM/yyyy", { locale: es })} — {entry.hora} hs</span>
+                            {selectedDates.map((d, i) => (
+                                <span key={i}>📅 {format(d, "EEEE d/MM/yyyy", { locale: es })} — {horaTurno} hs</span>
                             ))}
                         </div>
 
@@ -495,7 +479,20 @@ const PatientForm = ({ onClose, onSave, patientToEdit }) => {
                                     <Calendar size={17} /> SELECCIONAR DÍAS DE SESIÓN
                                 </h4>
 
-                                <MultiDateCalendar selectedDates={selectedDates} onToggleDate={toggleDate} onChangeHora={changeHora} />
+                                <MultiDateCalendar selectedDates={selectedDates} onToggleDate={toggleDate} />
+
+                                {/* Selector de hora único para todos los días */}
+                                <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '12px', background: 'rgba(0,0,0,0.25)', borderRadius: '10px', padding: '12px 16px', border: '1px solid var(--primary)' }}>
+                                    <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--primary)', whiteSpace: 'nowrap' }}>🕐 HORARIO PARA TODOS LOS DÍAS:</span>
+                                    <select
+                                        value={horaTurno}
+                                        onChange={e => setHoraTurno(e.target.value)}
+                                        style={{ background: '#111318', color: 'white', border: '1px solid var(--primary)', borderRadius: '8px', padding: '8px 12px', fontSize: '1rem', fontWeight: '700', cursor: 'pointer', flex: 1 }}>
+                                        {horariosSlotsList.map(h => (
+                                            <option key={h} value={h}>{h} hs</option>
+                                        ))}
+                                    </select>
+                                </div>
                             </div>
 
                             <div style={{ display: 'flex', gap: '10px' }}>
