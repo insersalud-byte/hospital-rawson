@@ -29,12 +29,12 @@ const PatientPanel = ({ patient, onClose, onSaved }) => {
 
     useEffect(() => {
         axios.get(`${API_URL}/sessions/patient/${patient.id}`)
-            .then(res => setHistory(res.data || []))
+            .then(res => setHistory(Array.isArray(res.data) ? res.data : []))
             .catch(() => setHistory([]))
             .finally(() => setLoadingHistory(false));
         axios.get(`${API_URL}/treatments`)
-            .then(res => setTreatments(res.data || []))
-            .catch(() => { });
+            .then(res => setTreatments(Array.isArray(res.data) ? res.data : []))
+            .catch(() => setTreatments([]));
     }, [patient.id]);
 
     // Timer countdown
@@ -453,7 +453,7 @@ const AgendaCalendar = () => {
             const validSlots = new Set(['08:00','08:45','09:30','10:15','11:00','11:45','12:30','13:15','14:00','14:45','15:30','16:15','17:00','17:45']);
             
             // Incluir todos los estados (programado, asistió, no asistió) para que no desaparezcan al atenderlos
-            const daySessions = (resSessions.data || []).filter(s => 
+            const daySessions = (Array.isArray(resSessions.data) ? resSessions.data : []).filter(s =>
                 s.fecha === dateStr && s.paciente_id && (s.estado === 'programado' || s.estado === 'asistió' || s.estado === 'no asistió')
             );
             
@@ -462,7 +462,7 @@ const AgendaCalendar = () => {
                 const horaFull = session.hora || '08:00';
                 const hora = horaFull.substring(0, 5);
                 if (!validSlots.has(hora)) return; 
-                const patient = (resPatients.data || []).find(p => String(p.id) === String(session.paciente_id));
+                const patient = (Array.isArray(resPatients.data) ? resPatients.data : []).find(p => String(p.id) === String(session.paciente_id));
                 if (!patient) return; 
                 
                 // Buscar el siguiente slot libre (hasta 10 pacientes por hora)

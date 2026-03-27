@@ -210,7 +210,7 @@ const Login = () => {
                     fontSize: '2rem'
                 }}>🏥</div>
 
-                <h2 style={{ fontSize: '1.9rem', letterSpacing: '-0.5px', marginBottom: '6px' }}>Hospital Rawson (v3.5)</h2>
+                <h2 style={{ fontSize: '1.9rem', letterSpacing: '-0.5px', marginBottom: '6px' }}>Hospital Rawson (v3.6)</h2>
                 <p style={{ color: 'var(--text-muted)', marginBottom: '36px', fontSize: '0.95rem' }}>
                     Servicio de Kinesiología
                 </p>
@@ -337,8 +337,9 @@ const loginBtnStyle = {
 
 // ─── Error Boundary ────────────────────────────────────────────────────────────
 class ErrorBoundary extends React.Component {
-    state = { hasError: false, error: null };
+    state = { hasError: false, error: null, stack: '' };
     static getDerivedStateFromError(error) { return { hasError: true, error }; }
+    componentDidCatch(error, info) { this.setState({ stack: info?.componentStack || '' }); }
     render() {
         if (this.state.hasError) {
             return (
@@ -348,8 +349,13 @@ class ErrorBoundary extends React.Component {
                 }}>
                     <div style={{ fontSize: '3rem' }}>⚠️</div>
                     <h2 style={{ color: '#ff5252', fontSize: '1.3rem' }}>Error en la aplicación</h2>
-                    <p style={{ color: '#aaa', maxWidth: '500px', fontSize: '0.9rem' }}>{String(this.state.error)}</p>
-                    <button onClick={() => this.setState({ hasError: false, error: null })}
+                    <p style={{ color: '#ffea00', maxWidth: '600px', fontSize: '0.88rem', fontFamily: 'monospace', wordBreak: 'break-all' }}>{String(this.state.error)}</p>
+                    {this.state.stack && (
+                        <pre style={{ color: '#888', fontSize: '0.7rem', textAlign: 'left', maxWidth: '600px', maxHeight: '150px', overflowY: 'auto', background: '#111', padding: '10px', borderRadius: '8px', whiteSpace: 'pre-wrap' }}>
+                            {this.state.stack}
+                        </pre>
+                    )}
+                    <button onClick={() => this.setState({ hasError: false, error: null, stack: '' })}
                         style={{ padding: '12px 28px', background: '#0088cc', border: 'none', borderRadius: '10px', color: 'white', fontWeight: '700', cursor: 'pointer', fontSize: '1rem' }}>
                         Reintentar
                     </button>
