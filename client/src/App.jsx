@@ -49,8 +49,8 @@ const Dashboard = () => {
                 axios.get(`${API_URL}/sessions`),
                 axios.get(`${API_URL}/patients`)
             ]);
-            const allSessions = resSes.data || [];
-            const allPatients = resPat.data || [];
+            const allSessions = Array.isArray(resSes.data) ? resSes.data : [];
+            const allPatients = Array.isArray(resPat.data) ? resPat.data : [];
             setSessions(allSessions);
             setPatients(allPatients);
 
@@ -210,7 +210,7 @@ const Login = () => {
                     fontSize: '2rem'
                 }}>🏥</div>
 
-                <h2 style={{ fontSize: '1.9rem', letterSpacing: '-0.5px', marginBottom: '6px' }}>Hospital Rawson (v3.6)</h2>
+                <h2 style={{ fontSize: '1.9rem', letterSpacing: '-0.5px', marginBottom: '6px' }}>Hospital Rawson (v3.7)</h2>
                 <p style={{ color: 'var(--text-muted)', marginBottom: '36px', fontSize: '0.95rem' }}>
                     Servicio de Kinesiología
                 </p>

@@ -21,7 +21,7 @@ const PatientHistory = ({ patient }) => {
 
     useEffect(() => {
         axios.get(`${API_URL}/sessions/patient/${patient.id}`)
-            .then(res => setSessions(res.data || []))
+            .then(res => setSessions(Array.isArray(res.data) ? res.data : []))
             .catch(() => setSessions([]))
             .finally(() => setLoading(false));
     }, [patient.id]);
@@ -203,7 +203,7 @@ const PatientList = () => {
     const fetchPatients = async () => {
         try {
             const res = await axios.get(`${API_URL}/patients`);
-            setPatients(res.data || []);
+            setPatients(Array.isArray(res.data) ? res.data : []);
         } catch (err) { console.error('Error cargando pacientes:', err); }
     };
 

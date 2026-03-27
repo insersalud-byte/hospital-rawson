@@ -33,11 +33,11 @@ const ConfigPage = () => {
                 axios.get(`${API_URL}/patients`),
                 axios.get(`${API_URL}/sessions`),
             ]);
-            setProfessionals(resPro.data || []);
-            setPathologies(resPath.data || []);
-            setTreatments(resTreat.data || []);
-            setPatients(resPat.data || []);
-            setSessions(resSes.data || []);
+            setProfessionals(Array.isArray(resPro.data) ? resPro.data : []);
+            setPathologies(Array.isArray(resPath.data) ? resPath.data : []);
+            setTreatments(Array.isArray(resTreat.data) ? resTreat.data : []);
+            setPatients(Array.isArray(resPat.data) ? resPat.data : []);
+            setSessions(Array.isArray(resSes.data) ? resSes.data : []);
         } catch (err) {
             console.error('Error cargando configuración:', err);
         }
@@ -57,7 +57,7 @@ const ConfigPage = () => {
         } catch (err) {
             console.error('Error eliminando kinesiólogo:', err);
             const msg = err.response?.data?.error || err.message || 'Error desconocido';
-            alert(`Error al eliminar kinesiólogo: ${msg}`);
+            alert(`⚠️ FALLO AL ELIMINAR KINESIÓLOGO:\n\n${msg}`);
         }
     };
 
@@ -122,8 +122,9 @@ const ConfigPage = () => {
             await fetchConfig();
             showSuccess('✅ Paciente eliminado');
         } catch (err) {
+            console.error('Error al eliminar paciente:', err);
             const msg = err.response?.data?.error || err.message || 'Error desconocido';
-            alert(`No se pudo eliminar: ${msg}`);
+            alert(`⚠️ FALLO AL ELIMINAR PACIENTE:\n\n${msg}`);
         }
     };
 

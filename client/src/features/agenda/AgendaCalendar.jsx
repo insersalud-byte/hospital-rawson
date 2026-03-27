@@ -393,7 +393,7 @@ const UpcomingAppointmentsModal = ({ onClose }) => {
             .then(res => {
                 const now = new Date();
                 const today = startOfDay(now);
-                const list = (res.data || [])
+                const list = (Array.isArray(res.data) ? res.data : [])
                     .filter(s => s.estado === 'programado' && new Date(s.fecha + 'T00:00:00') > today)
                     .sort((a,b) => new Date(a.fecha + 'T' + a.hora) - new Date(b.fecha + 'T' + b.hora));
                 setUpcoming(list.slice(0, 50)); // Mostrar top 50
