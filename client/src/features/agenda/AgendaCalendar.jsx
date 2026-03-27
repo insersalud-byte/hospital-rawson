@@ -139,11 +139,11 @@ const PatientPanel = ({ patient, onClose, onSaved }) => {
             zIndex: 9999, padding: '15px'
         }}>
             <div style={{
-                width: '100%', maxWidth: '640px', maxHeight: '90vh',
+                width: '100%', maxWidth: '640px', height: 'min(90vh, 720px)',
                 display: 'flex', flexDirection: 'column',
                 borderTop: '4px solid var(--primary)',
-                background: '#1a1e26', border: '1px solid var(--border)',
-                borderRadius: '20px', overflow: 'hidden'
+                background: '#1a2035', border: '1px solid rgba(255,255,255,0.15)',
+                borderRadius: '20px'
             }}>
                 {/* Header */}
                 <div style={{ padding: '22px 28px', borderBottom: '1px solid var(--border)' }}>
@@ -403,7 +403,7 @@ const UpcomingAppointmentsModal = ({ onClose }) => {
 
     return createPortal(
         <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, left: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px' }}>
-            <div style={{ width: '100%', maxWidth: '500px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', background: '#1a1e26', border: '1px solid var(--border)', borderRadius: '20px', overflow: 'hidden' }}>
+            <div style={{ width: '100%', maxWidth: '500px', height: 'min(80vh, 600px)', display: 'flex', flexDirection: 'column', background: '#1a2035', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '20px' }}>
                 <div style={{ padding: '20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <h3 style={{ fontSize: '1.2rem' }}>📅 Próximos Turnos Agendados</h3>
                     <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.5rem', cursor: 'pointer' }}>✕</button>

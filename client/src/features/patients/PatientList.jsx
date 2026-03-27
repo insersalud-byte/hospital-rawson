@@ -39,7 +39,7 @@ const PatientHistory = ({ patient }) => {
     ))];
 
     return (
-        <div style={{ marginTop: '15px', padding: '15px', background: 'rgba(255,255,255,0.05)', borderRadius: '12px', border: '1px solid var(--border)', fontSize: '0.85rem' }}>
+        <div style={{ marginTop: '15px', padding: '15px', background: '#1a2035', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.15)', fontSize: '0.85rem', color: 'white' }}>
             <h4 style={{ fontSize: '0.9rem', color: 'var(--primary)', marginBottom: '10px' }}>📊 RESUMEN DE TRATAMIENTO</h4>
 
             {/* Patología siempre visible */}
@@ -430,9 +430,9 @@ const PatientForm = ({ onClose, onSave, patientToEdit }) => {
             zIndex: 9999, padding: '15px'
         }}>
             <div style={{
-                width: '100%', maxWidth: '700px', maxHeight: '92vh',
+                width: '100%', maxWidth: '700px', height: 'min(92vh, 800px)',
                 overflowY: 'auto', padding: '30px',
-                background: '#1a1e26', border: '1px solid var(--border)',
+                background: '#1a2035', border: '1px solid rgba(255,255,255,0.15)',
                 borderRadius: '20px',
                 borderTop: savedOk ? '4px solid #00e676' : '4px solid var(--primary)'
             }}>
