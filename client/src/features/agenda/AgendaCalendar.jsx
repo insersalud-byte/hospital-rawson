@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import axios from 'axios';
 import { format, addMinutes, startOfDay, setHours, setMinutes } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -131,17 +132,18 @@ const PatientPanel = ({ patient, onClose, onSaved }) => {
         return 'var(--text-muted)';
     };
 
-    return (
+    return createPortal(
         <div style={{
             position: 'fixed', top: 0, right: 0, bottom: 0, left: 0, background: 'rgba(0,0,0,0.9)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             zIndex: 9999, padding: '15px'
         }}>
-            <div className="premium-card" style={{
+            <div style={{
                 width: '100%', maxWidth: '640px', maxHeight: '90vh',
                 display: 'flex', flexDirection: 'column',
                 borderTop: '4px solid var(--primary)',
-                background: '#1a1e26', border: '1px solid var(--border)'
+                background: '#1a1e26', border: '1px solid var(--border)',
+                borderRadius: '20px', overflow: 'hidden'
             }}>
                 {/* Header */}
                 <div style={{ padding: '22px 28px', borderBottom: '1px solid var(--border)' }}>
@@ -370,7 +372,7 @@ const PatientPanel = ({ patient, onClose, onSaved }) => {
                 </div>
             </div>
         </div>
-    );
+    , document.body);
 };
 
 // Estilos compartidos
@@ -399,9 +401,9 @@ const UpcomingAppointmentsModal = ({ onClose }) => {
             .finally(() => setLoading(false));
     }, []);
 
-    return (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px' }}>
-            <div className="premium-card glass-panel" style={{ width: '100%', maxWidth: '500px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+    return createPortal(
+        <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, left: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px' }}>
+            <div style={{ width: '100%', maxWidth: '500px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', background: '#1a1e26', border: '1px solid var(--border)', borderRadius: '20px', overflow: 'hidden' }}>
                 <div style={{ padding: '20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <h3 style={{ fontSize: '1.2rem' }}>📅 Próximos Turnos Agendados</h3>
                     <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.5rem', cursor: 'pointer' }}>✕</button>
@@ -426,7 +428,7 @@ const UpcomingAppointmentsModal = ({ onClose }) => {
                 </div>
             </div>
         </div>
-    );
+    , document.body);
 };
 
 // ─── Agenda Principal ─────────────────────────────────────────────────────────

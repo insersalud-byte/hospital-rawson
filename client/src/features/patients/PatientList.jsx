@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import axios from 'axios';
 import { Plus, Search, Phone, Hospital, MessageCircle, Calendar, ChevronLeft, ChevronRight, Edit, Trash2 } from 'lucide-react';
 import ClinicalSemaphore from '../../components/ui/ClinicalSemaphore';
@@ -422,16 +423,17 @@ const PatientForm = ({ onClose, onSave, patientToEdit }) => {
         />
     );
 
-    return (
+    return createPortal(
         <div style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)',
+            position: 'fixed', top: 0, right: 0, bottom: 0, left: 0, background: 'rgba(0,0,0,0.88)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             zIndex: 9999, padding: '15px'
         }}>
-            <div className="premium-card" style={{
+            <div style={{
                 width: '100%', maxWidth: '700px', maxHeight: '92vh',
                 overflowY: 'auto', padding: '30px',
                 background: '#1a1e26', border: '1px solid var(--border)',
+                borderRadius: '20px',
                 borderTop: savedOk ? '4px solid #00e676' : '4px solid var(--primary)'
             }}>
                 {savedOk ? (
@@ -547,7 +549,7 @@ const PatientForm = ({ onClose, onSave, patientToEdit }) => {
                 )}
             </div>
         </div>
-    );
+    , document.body);
 };
 
 const labelStyle = { fontSize: '0.72rem', fontWeight: '700', letterSpacing: '0.5px', color: 'var(--text-muted)', display: 'block', marginBottom: '7px' };
