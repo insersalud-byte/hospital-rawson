@@ -140,13 +140,15 @@ const PatientPanel = ({ patient, onClose, onSaved }) => {
         }}>
             <div style={{
                 width: '100%', maxWidth: '640px', maxHeight: '90vh',
-                display: 'flex', flexDirection: 'column',
+                overflowY: 'auto',
+                background: '#1a3a5c',
+                border: '2px solid rgba(100,160,255,0.4)',
                 borderTop: '4px solid var(--primary)',
-                background: '#243b5e', border: '2px solid rgba(255,255,255,0.2)',
-                borderRadius: '20px', overflow: 'hidden'
+                borderRadius: '20px',
+                padding: '0'
             }}>
                 {/* Header */}
-                <div style={{ padding: '22px 28px', borderBottom: '1px solid var(--border)' }}>
+                <div style={{ padding: '22px 28px', borderBottom: '1px solid rgba(255,255,255,0.15)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
                             <h2 style={{ fontSize: '1.3rem', marginBottom: '3px' }}>
@@ -191,7 +193,7 @@ const PatientPanel = ({ patient, onClose, onSaved }) => {
                 </div>
 
                 {/* Contenido */}
-                <div style={{ overflowY: 'auto', flex: 1, minHeight: 0, padding: '20px 28px' }}>
+                <div style={{ padding: '20px 28px' }}>
 
                     {/* ── HISTORIAL ── */}
                     {mode === 'history' && (

@@ -94,7 +94,7 @@ const PatientHistory = ({ patient }) => {
                             <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', marginBottom: '6px' }}>📝 ÚLTIMAS EVOLUCIONES:</p>
                             {asistidas.slice(0, 3).map((s, idx) => s.observaciones && (
                                 <div key={idx} style={{ padding: '8px', fontSize: '0.78rem', borderLeft: '3px solid var(--primary)', background: 'rgba(255,255,255,0.04)', marginBottom: '6px', borderRadius: '0 6px 6px 0' }}>
-                                    <strong>{format(new Date(s.fecha + 'T00:00:00'), 'd/MM')}:</strong> {s.observaciones.substring(0, 100)}{s.observaciones.length > 100 ? '...' : ''}
+                                    <strong>{s.fecha ? format(new Date(s.fecha + 'T00:00:00'), 'd/MM') : '—'}:</strong> {s.observaciones.substring(0, 100)}{s.observaciones.length > 100 ? '...' : ''}
                                 </div>
                             ))}
                         </div>
