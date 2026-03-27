@@ -78,14 +78,14 @@ module.exports = async (req, res) => {
             if (!idToUpdate) return res.status(400).json({ error: 'ID de sesión requerido' });
 
             const { estado, tratamiento_id, observaciones, kinesiologo_nombre_snapshot, tratamientos_texto } = req.body;
-            const { error } = await supabase.from('rawson_sesiones').update({
+            const updateData = {
                 estado,
                 tratamiento_id: parseId(tratamiento_id),
                 observaciones: observaciones || null,
                 kinesiologo_nombre_snapshot: kinesiologo_nombre_snapshot || null,
                 tratamientos_texto: tratamientos_texto || null,
-                updated_at: new Date().toISOString()
-            }).eq('id', idToUpdate);
+            };
+            const { error } = await supabase.from('rawson_sesiones').update(updateData).eq('id', idToUpdate);
             if (error) throw error;
             return res.json({ success: true });
         }

@@ -107,7 +107,8 @@ const PatientPanel = ({ patient, onClose, onSaved }) => {
             onClose();
         } catch (err) {
             console.error('Error guardando:', err);
-            alert('Error al guardar. Reintentá.');
+            const msg = err.response?.data?.error || err.message || 'Error desconocido';
+            alert(`Error al guardar: ${msg}`);
         } finally {
             setSaving(false);
         }
