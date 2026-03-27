@@ -31,55 +31,74 @@ const PatientHistory = ({ patient }) => {
     const hoy = startOfDay(new Date());
     const faltantes = sessions.filter(s => s.estado === 'programado' && (new Date(s.fecha + 'T00:00:00') >= hoy));
     const faltadas = sessions.filter(s => s.estado === 'no asistió');
-    
+
     // Obtener todos los nombres de tratamientos únicos
-    const tratamientos = [...new Set(asistidas.flatMap(s => 
+    const tratamientos = [...new Set(asistidas.flatMap(s =>
         (s.tratamientos_texto || s.tratamiento_nombre || '').split(',').map(t => t.trim()).filter(Boolean)
     ))];
 
     return (
-        <div style={{ marginTop: '15px', padding: '15px', background: 'rgba(0,0,0,0.3)', borderRadius: '12px', border: '1px solid var(--border)', fontSize: '0.85rem' }}>
+        <div style={{ marginTop: '15px', padding: '15px', background: 'rgba(255,255,255,0.05)', borderRadius: '12px', border: '1px solid var(--border)', fontSize: '0.85rem' }}>
             <h4 style={{ fontSize: '0.9rem', color: 'var(--primary)', marginBottom: '10px' }}>📊 RESUMEN DE TRATAMIENTO</h4>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
-                <div style={{ background: 'rgba(255,255,255,0.03)', padding: '8px', borderRadius: '8px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.65rem', marginBottom: '4px' }}>DADAS</p>
-                    <p style={{ fontSize: '1.2rem', fontWeight: '800', color: '#00e676' }}>{asistidas.length}</p>
-                </div>
-                <div style={{ background: 'rgba(255,255,255,0.03)', padding: '8px', borderRadius: '8px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.65rem', marginBottom: '4px' }}>FALTÓ</p>
-                    <p style={{ fontSize: '1.2rem', fontWeight: '800', color: '#ff5252' }}>{faltadas.length}</p>
-                </div>
-                <div style={{ background: 'rgba(255,255,255,0.03)', padding: '8px', borderRadius: '8px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.65rem', marginBottom: '4px' }}>PRÓXIMAS</p>
-                    <p style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--primary)' }}>{faltantes.length}</p>
-                </div>
-                <div style={{ background: 'rgba(255,255,255,0.03)', padding: '8px', borderRadius: '8px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.65rem', marginBottom: '4px' }}>HISTORIAL</p>
-                    <p style={{ fontSize: '1.2rem', fontWeight: '800' }}>{sessions.length}</p>
-                </div>
-            </div>
 
-            {tratamientos.length > 0 && (
-                <div style={{ marginBottom: '12px' }}>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', marginBottom: '6px' }}>TRATAMIENTOS RECIBIDOS:</p>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-                        {tratamientos.map((t, idx) => (
-                            <span key={idx} style={{ padding: '3px 8px', borderRadius: '4px', background: 'rgba(0,136,204,0.15)', border: '1px solid var(--primary)', fontSize: '0.73rem', color: 'white' }}>{t}</span>
-                        ))}
-                    </div>
+            {/* Patología siempre visible */}
+            {patient.patologia && (
+                <div style={{ marginBottom: '12px', padding: '8px 12px', background: 'rgba(0,136,204,0.1)', borderRadius: '8px', border: '1px solid var(--primary)' }}>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.65rem', marginBottom: '2px' }}>DIAGNÓSTICO / PATOLOGÍA</p>
+                    <p style={{ fontWeight: '700', fontSize: '0.88rem', color: 'white' }}>🔬 {patient.patologia}</p>
                 </div>
             )}
 
-            {asistidas.length > 0 && (
-                <div>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', marginBottom: '6px' }}>📝 ÚLTIMAS EVOLUCIONES:</p>
-                    {asistidas.slice(0, 3).map((s, idx) => s.observaciones && (
-                        <div key={idx} style={{ padding: '8px', fontSize: '0.78rem', borderLeft: '3px solid var(--primary)', background: 'rgba(255,255,255,0.02)', marginBottom: '6px', borderRadius: '0 6px 6px 0' }}>
-                            <strong>{format(new Date(s.fecha + 'T00:00:00'), 'd/MM')}:</strong> {s.observaciones.substring(0, 100)}{s.observaciones.length > 100 ? '...' : ''}
-                        </div>
-                    ))}
+            {/* Sin sesiones */}
+            {sessions.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '14px 10px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    <p style={{ fontSize: '1.5rem', marginBottom: '6px' }}>🕐</p>
+                    <p style={{ fontWeight: '700', color: 'white', fontSize: '0.88rem', marginBottom: '4px' }}>Sin sesiones registradas</p>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>El paciente aún no fue atendido ni tiene turnos asignados.</p>
                 </div>
+            ) : (
+                <>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
+                        <div style={{ background: 'rgba(255,255,255,0.06)', padding: '8px', borderRadius: '8px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.08)' }}>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.65rem', marginBottom: '4px' }}>DADAS</p>
+                            <p style={{ fontSize: '1.2rem', fontWeight: '800', color: '#00e676' }}>{asistidas.length}</p>
+                        </div>
+                        <div style={{ background: 'rgba(255,255,255,0.06)', padding: '8px', borderRadius: '8px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.08)' }}>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.65rem', marginBottom: '4px' }}>FALTÓ</p>
+                            <p style={{ fontSize: '1.2rem', fontWeight: '800', color: '#ff5252' }}>{faltadas.length}</p>
+                        </div>
+                        <div style={{ background: 'rgba(255,255,255,0.06)', padding: '8px', borderRadius: '8px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.08)' }}>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.65rem', marginBottom: '4px' }}>PRÓXIMAS</p>
+                            <p style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--primary)' }}>{faltantes.length}</p>
+                        </div>
+                        <div style={{ background: 'rgba(255,255,255,0.06)', padding: '8px', borderRadius: '8px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.08)' }}>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.65rem', marginBottom: '4px' }}>HISTORIAL</p>
+                            <p style={{ fontSize: '1.2rem', fontWeight: '800', color: 'white' }}>{sessions.length}</p>
+                        </div>
+                    </div>
+
+                    {tratamientos.length > 0 && (
+                        <div style={{ marginBottom: '12px' }}>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', marginBottom: '6px' }}>TRATAMIENTOS RECIBIDOS:</p>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                                {tratamientos.map((t, idx) => (
+                                    <span key={idx} style={{ padding: '3px 8px', borderRadius: '4px', background: 'rgba(0,136,204,0.15)', border: '1px solid var(--primary)', fontSize: '0.73rem', color: 'white' }}>{t}</span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {asistidas.length > 0 && (
+                        <div>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', marginBottom: '6px' }}>📝 ÚLTIMAS EVOLUCIONES:</p>
+                            {asistidas.slice(0, 3).map((s, idx) => s.observaciones && (
+                                <div key={idx} style={{ padding: '8px', fontSize: '0.78rem', borderLeft: '3px solid var(--primary)', background: 'rgba(255,255,255,0.04)', marginBottom: '6px', borderRadius: '0 6px 6px 0' }}>
+                                    <strong>{format(new Date(s.fecha + 'T00:00:00'), 'd/MM')}:</strong> {s.observaciones.substring(0, 100)}{s.observaciones.length > 100 ? '...' : ''}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </>
             )}
         </div>
     );
@@ -198,7 +217,9 @@ const PatientList = () => {
             await axios.delete(`${API_URL}/patients/${id}`);
             await fetchPatients();
         } catch (err) {
-            alert(err.response?.data?.error || err.message || 'No se pudo eliminar');
+            console.error('Error al eliminar paciente:', err);
+            const errorMsg = err.response?.data?.error || err.message || 'Error desconocido al intentar eliminar';
+            alert(`⚠️ FALLO AL ELIMINAR:\n\n${errorMsg}`);
         }
     };
 
