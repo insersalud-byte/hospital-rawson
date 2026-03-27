@@ -36,29 +36,46 @@ module.exports = async (req, res) => {
         }
 
         if (req.method === 'DELETE') {
+            console.log('DELETE /api/patients requested:', req.url);
             const url = new URL(req.url, `http://${req.headers.host}`);
-            const parts = url.pathname.replace('/api/patients', '').split('/').filter(Boolean);
-            const patId = parseId(parts[0]);
-            if (!patId) return res.status(400).json({ error: 'ID requerido' });
+            // Más robusto: extraer el ID independientemente de la ruta base
+            const pathParts = url.pathname.split('/').filter(Boolean);
+            const patId = parseId(pathParts[pathParts.length - 1]);
+            
+            console.log('Parsed patient ID to delete:', patId);
+            if (!patId) return res.status(400).json({ error: 'ID requerido o inválido' });
 
             // Verificar si el paciente fue atendido
             const { data: attended, error: errCheck } = await supabase
                 .from('rawson_sesiones')
-                .select('id')
+                .select('id, estado')
                 .eq('paciente_id', patId)
                 .eq('estado', 'asistió')
                 .limit(1);
             if (errCheck) throw errCheck;
-            if (attended && attended.length > 0)
-                return res.status(400).json({ error: 'No se puede eliminar: el paciente ya fue atendido en al menos una sesión.' });
+            
+            if (attended && attended.length > 0) {
+                console.warn(`Attempt to delete patient ${patId} with attended sessions.`);
+                return res.status(400).json({ error: 'No se puede eliminar: el paciente ya tiene sesiones marcadas como "asistió". 🏥 Por seguridad no se permiten borrar pacientes con historial activo.' });
+            }
 
-            // Borrar sesiones pendientes del paciente
+            // Borrar TODAS las sesiones del paciente (incluyendo "programado" y "no asistió")
+            console.log(`Deleting sessions for patient ${patId}...`);
             const { error: errSes } = await supabase.from('rawson_sesiones').delete().eq('paciente_id', patId);
-            if (errSes) throw errSes;
+            if (errSes) {
+                console.error('Error deleting sessions:', errSes);
+                throw errSes;
+            }
 
             // Borrar paciente
+            console.log(`Deleting patient record ${patId}...`);
             const { error } = await supabase.from('rawson_pacientes').delete().eq('id', patId);
-            if (error) throw error;
+            if (error) {
+                console.error('Error deleting patient:', error);
+                throw error;
+            }
+            
+            console.log(`Patient ${patId} deleted successfully.`);
             return res.json({ success: true });
         }
 

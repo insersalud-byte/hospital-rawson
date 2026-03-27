@@ -70,7 +70,13 @@ module.exports = async (req, res) => {
         }
 
         // PUT /api/sessions/:id
-        if (req.method === 'PUT' && parts[0]) {
+        if (req.method === 'PUT') {
+            const pathParts = url.pathname.split('/').filter(Boolean);
+            const idToUpdate = parseId(pathParts[pathParts.length - 1]);
+            
+            console.log('PUT /api/sessions/:id requested for ID:', idToUpdate);
+            if (!idToUpdate) return res.status(400).json({ error: 'ID de sesión requerido' });
+
             const { estado, tratamiento_id, observaciones, kinesiologo_nombre_snapshot, tratamientos_texto } = req.body;
             const { error } = await supabase.from('rawson_sesiones').update({
                 estado,
@@ -79,14 +85,20 @@ module.exports = async (req, res) => {
                 kinesiologo_nombre_snapshot: kinesiologo_nombre_snapshot || null,
                 tratamientos_texto: tratamientos_texto || null,
                 updated_at: new Date().toISOString()
-            }).eq('id', parseId(parts[0]));
+            }).eq('id', idToUpdate);
             if (error) throw error;
             return res.json({ success: true });
         }
 
         // DELETE /api/sessions/:id
-        if (req.method === 'DELETE' && parts[0]) {
-            const { error } = await supabase.from('rawson_sesiones').delete().eq('id', parseId(parts[0]));
+        if (req.method === 'DELETE') {
+            const pathParts = url.pathname.split('/').filter(Boolean);
+            const idToDelete = parseId(pathParts[pathParts.length - 1]);
+            
+            console.log('DELETE /api/sessions/:id requested for ID:', idToDelete);
+            if (!idToDelete) return res.status(400).json({ error: 'ID de sesión requerido' });
+
+            const { error } = await supabase.from('rawson_sesiones').delete().eq('id', idToDelete);
             if (error) throw error;
             return res.json({ success: true });
         }
