@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import axios from 'axios';
 import { format, addMinutes, startOfDay, setHours, setMinutes } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -132,21 +131,24 @@ const PatientPanel = ({ patient, onClose, onSaved }) => {
         return 'var(--text-muted)';
     };
 
-    return createPortal(
+    return (
         <div style={{
-            position: 'fixed', top: 0, right: 0, bottom: 0, left: 0, background: 'rgba(0,0,0,0.9)',
+            position: 'fixed', top: 0, left: 0,
+            width: '100vw', height: '100vh',
+            background: 'rgba(0,0,0,0.85)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            zIndex: 9999, padding: '15px'
-        }}>
+            zIndex: 99999, padding: '15px',
+            boxSizing: 'border-box'
+        }} onClick={onClose}>
             <div style={{
                 width: '100%', maxWidth: '640px', maxHeight: '90vh',
                 overflowY: 'auto',
                 background: '#1a3a5c',
-                border: '2px solid rgba(100,160,255,0.4)',
-                borderTop: '4px solid var(--primary)',
+                border: '2px solid #4488cc',
+                borderTop: '4px solid #0088cc',
                 borderRadius: '20px',
-                padding: '0'
-            }}>
+                color: 'white'
+            }} onClick={e => e.stopPropagation()}>
                 {/* Header */}
                 <div style={{ padding: '22px 28px', borderBottom: '1px solid rgba(255,255,255,0.15)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -374,7 +376,7 @@ const PatientPanel = ({ patient, onClose, onSaved }) => {
                 </div>
             </div>
         </div>
-    , document.body);
+    );
 };
 
 // Estilos compartidos
@@ -403,14 +405,14 @@ const UpcomingAppointmentsModal = ({ onClose }) => {
             .finally(() => setLoading(false));
     }, []);
 
-    return createPortal(
-        <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, left: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px' }}>
-            <div style={{ width: '100%', maxWidth: '500px', height: 'min(80vh, 600px)', display: 'flex', flexDirection: 'column', background: '#1a2035', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '20px' }}>
-                <div style={{ padding: '20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    return (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, padding: '20px', boxSizing: 'border-box' }} onClick={onClose}>
+            <div style={{ width: '100%', maxWidth: '500px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', background: '#1a3050', border: '2px solid #4488cc', borderRadius: '20px', color: 'white' }} onClick={e => e.stopPropagation()}>
+                <div style={{ padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                     <h3 style={{ fontSize: '1.2rem' }}>📅 Próximos Turnos Agendados</h3>
                     <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.5rem', cursor: 'pointer' }}>✕</button>
                 </div>
-                <div style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
+                <div style={{ padding: '20px', overflowY: 'auto', flex: 1, minHeight: 0 }}>
                     {loading && <p style={{ textAlign: 'center', color: 'var(--text-muted)' }}>Cargando...</p>}
                     {!loading && upcoming.length === 0 && <p style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No hay turnos futuros programados.</p>}
                     {!loading && upcoming.map((s, idx) => (
@@ -420,17 +422,17 @@ const UpcomingAppointmentsModal = ({ onClose }) => {
                                 <span style={{ color: 'var(--primary)', fontWeight: '700' }}>{s.hora}</span>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                                <span style={{ textTransform: 'capitalize' }}>🗓️ {format(new Date(s.fecha + 'T00:00:00'), "EEEE d 'de' MMMM", { locale: es })}</span>
+                                <span style={{ textTransform: 'capitalize' }}>🗓️ {s.fecha ? format(new Date(s.fecha + 'T00:00:00'), "EEEE d 'de' MMMM", { locale: es }) : '—'}</span>
                             </div>
                         </div>
                     ))}
                 </div>
-                <div style={{ padding: '15px', borderTop: '1px solid var(--border)', textAlign: 'center' }}>
+                <div style={{ padding: '15px', borderTop: '1px solid rgba(255,255,255,0.15)', textAlign: 'center', flexShrink: 0 }}>
                     <button onClick={onClose} className="vibrant-gradient" style={{ padding: '10px 30px', borderRadius: '10px', border: 'none', color: 'white', fontWeight: '700', cursor: 'pointer' }}>ENTENDIDO</button>
                 </div>
             </div>
         </div>
-    , document.body);
+    );
 };
 
 // ─── Agenda Principal ─────────────────────────────────────────────────────────
@@ -559,7 +561,7 @@ const AgendaCalendar = () => {
                                         const isMissed = p.estado === 'no asistió';
                                         
                                         return (
-                                            <button key={i} onClick={() => setActivePatient(p)}
+                                            <button key={i} onClick={e => { e.stopPropagation(); setActivePatient(p); }}
                                                 className={isAttended || isMissed ? "" : "vibrant-gradient"}
                                                 style={{
                                                     padding: '7px 16px', borderRadius: '20px', fontWeight: '600',
