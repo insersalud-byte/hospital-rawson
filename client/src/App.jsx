@@ -210,7 +210,7 @@ const Login = () => {
                     fontSize: '2rem'
                 }}>🏥</div>
 
-                <h2 style={{ fontSize: '1.9rem', letterSpacing: '-0.5px', marginBottom: '6px' }}>Hospital Rawson (v3.1)</h2>
+                <h2 style={{ fontSize: '1.9rem', letterSpacing: '-0.5px', marginBottom: '6px' }}>Hospital Rawson (v3.2)</h2>
                 <p style={{ color: 'var(--text-muted)', marginBottom: '36px', fontSize: '0.95rem' }}>
                     Servicio de Kinesiología
                 </p>

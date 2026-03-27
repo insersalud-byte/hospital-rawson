@@ -139,11 +139,11 @@ const PatientPanel = ({ patient, onClose, onSaved }) => {
             zIndex: 9999, padding: '15px'
         }}>
             <div style={{
-                width: '100%', maxWidth: '640px', height: 'min(90vh, 720px)',
+                width: '100%', maxWidth: '640px', maxHeight: '90vh',
                 display: 'flex', flexDirection: 'column',
                 borderTop: '4px solid var(--primary)',
-                background: '#1a2035', border: '1px solid rgba(255,255,255,0.15)',
-                borderRadius: '20px'
+                background: '#243b5e', border: '2px solid rgba(255,255,255,0.2)',
+                borderRadius: '20px', overflow: 'hidden'
             }}>
                 {/* Header */}
                 <div style={{ padding: '22px 28px', borderBottom: '1px solid var(--border)' }}>
@@ -191,7 +191,7 @@ const PatientPanel = ({ patient, onClose, onSaved }) => {
                 </div>
 
                 {/* Contenido */}
-                <div style={{ overflowY: 'auto', flex: 1, padding: '20px 28px' }}>
+                <div style={{ overflowY: 'auto', flex: 1, minHeight: 0, padding: '20px 28px' }}>
 
                     {/* ── HISTORIAL ── */}
                     {mode === 'history' && (
