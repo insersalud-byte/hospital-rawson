@@ -70,7 +70,7 @@ module.exports = async (req, res) => {
         }
 
         // PUT /api/sessions/:id
-        if (req.method === 'PUT') {
+        if (req.method === 'PUT' || req.method === 'put') {
             const pathParts = url.pathname.split('/').filter(Boolean);
             const idToUpdate = parseId(pathParts[pathParts.length - 1]);
             
@@ -103,7 +103,7 @@ module.exports = async (req, res) => {
             return res.json({ success: true });
         }
 
-        return res.status(405).json({ error: 'Method not allowed' });
+        return res.status(405).json({ error: 'Method not allowed', method: req.method, path: url.pathname, parts });
     } catch (error) {
         console.error('API Error:', error);
         return res.status(500).json({ error: error.message || 'Internal Server Error' });
