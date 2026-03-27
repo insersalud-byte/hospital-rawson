@@ -210,7 +210,7 @@ const Login = () => {
                     fontSize: '2rem'
                 }}>🏥</div>
 
-                <h2 style={{ fontSize: '1.9rem', letterSpacing: '-0.5px', marginBottom: '6px' }}>Hospital Rawson (v3.4)</h2>
+                <h2 style={{ fontSize: '1.9rem', letterSpacing: '-0.5px', marginBottom: '6px' }}>Hospital Rawson (v3.5)</h2>
                 <p style={{ color: 'var(--text-muted)', marginBottom: '36px', fontSize: '0.95rem' }}>
                     Servicio de Kinesiología
                 </p>
@@ -335,6 +335,31 @@ const loginBtnStyle = {
     fontSize: '1rem', cursor: 'pointer', border: 'none', color: 'white'
 };
 
+// ─── Error Boundary ────────────────────────────────────────────────────────────
+class ErrorBoundary extends React.Component {
+    state = { hasError: false, error: null };
+    static getDerivedStateFromError(error) { return { hasError: true, error }; }
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div style={{
+                    minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: '#0a0a0c', flexDirection: 'column', gap: '16px', padding: '30px', textAlign: 'center'
+                }}>
+                    <div style={{ fontSize: '3rem' }}>⚠️</div>
+                    <h2 style={{ color: '#ff5252', fontSize: '1.3rem' }}>Error en la aplicación</h2>
+                    <p style={{ color: '#aaa', maxWidth: '500px', fontSize: '0.9rem' }}>{String(this.state.error)}</p>
+                    <button onClick={() => this.setState({ hasError: false, error: null })}
+                        style={{ padding: '12px 28px', background: '#0088cc', border: 'none', borderRadius: '10px', color: 'white', fontWeight: '700', cursor: 'pointer', fontSize: '1rem' }}>
+                        Reintentar
+                    </button>
+                </div>
+            );
+        }
+        return this.props.children;
+    }
+}
+
 // ─── Ruta Protegida ────────────────────────────────────────────────────────────
 const ProtectedRoute = ({ children }) => {
     const { user, loading } = useAuth();
@@ -348,6 +373,7 @@ function App() {
     return (
         <Router basename="/">
             <AuthProvider>
+                <ErrorBoundary>
                 <Routes>
                     <Route path="/login" element={<Login />} />
                     <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
@@ -357,6 +383,7 @@ function App() {
                     <Route path="/configuracion" element={<ProtectedRoute><ConfigPage /></ProtectedRoute>} />
                     <Route path="*" element={<Navigate to="/" />} />
                 </Routes>
+                </ErrorBoundary>
             </AuthProvider>
         </Router>
     );

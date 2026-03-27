@@ -23,6 +23,9 @@ const PatientPanel = ({ patient, onClose, onSaved }) => {
     const [timerActive, setTimerActive] = useState(false);
     const [timeLeft, setTimeLeft] = useState(45 * 60); // segundos
     const timerRef = useRef(null);
+    const dialogRef = useRef(null);
+
+    useEffect(() => { dialogRef.current?.showModal(); }, []);
 
     useEffect(() => {
         axios.get(`${API_URL}/sessions/patient/${patient.id}`)
@@ -132,23 +135,17 @@ const PatientPanel = ({ patient, onClose, onSaved }) => {
     };
 
     return (
-        <div style={{
-            position: 'fixed', top: 0, left: 0,
-            width: '100vw', height: '100vh',
-            background: 'rgba(0,0,0,0.85)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            zIndex: 99999, padding: '15px',
-            boxSizing: 'border-box'
-        }} onClick={onClose}>
+        <dialog ref={dialogRef} onCancel={e => { e.preventDefault(); if (!saving) onClose(); }}
+            style={{ margin: 'auto', padding: 0, border: 'none', background: 'transparent',
+                     width: '640px', maxWidth: 'calc(100vw - 30px)', maxHeight: '90vh',
+                     overflowY: 'auto', borderRadius: '20px' }}>
             <div style={{
-                width: '100%', maxWidth: '640px', maxHeight: '90vh',
-                overflowY: 'auto',
                 background: '#1a3a5c',
                 border: '2px solid #4488cc',
                 borderTop: '4px solid #0088cc',
                 borderRadius: '20px',
                 color: 'white'
-            }} onClick={e => e.stopPropagation()}>
+            }}>
                 {/* Header */}
                 <div style={{ padding: '22px 28px', borderBottom: '1px solid rgba(255,255,255,0.15)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -375,7 +372,7 @@ const PatientPanel = ({ patient, onClose, onSaved }) => {
                     )}
                 </div>
             </div>
-        </div>
+        </dialog>
     );
 };
 

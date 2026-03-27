@@ -124,3 +124,11 @@ select:focus {
         padding: 20px !important;
     }
 }
+
+/* Modal nativo dialog */
+dialog {
+    outline: none;
+}
+dialog::backdrop {
+    background: rgba(0, 0, 0, 0.85);
+}
