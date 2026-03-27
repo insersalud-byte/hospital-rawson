@@ -39,7 +39,6 @@ const Dashboard = () => {
     const [proxDia, setProxDia] = useState(null);
     const [patients, setPatients] = useState([]);
     const [sessions, setSessions] = useState([]);
-    const [deletingId, setDeletingId] = useState(null);
 
     useEffect(() => { fetchData(); }, []);
 
@@ -82,21 +81,6 @@ const Dashboard = () => {
             console.error('Dashboard error:', err);
         } finally {
             setLoading(false);
-        }
-    };
-
-    const deletePatient = async (id, nombre) => {
-        if (!window.confirm(`¿Eliminar a ${nombre}? Se borrarán sus turnos pendientes.`)) return;
-        setDeletingId(id);
-        try {
-            await axios.delete(`${API_URL}/patients/${id}`);
-            // Actualizar estado local sin refetch para evitar falsos errores de red
-            setPatients(prev => prev.filter(p => String(p.id) !== String(id)));
-            setSessions(prev => prev.filter(s => String(s.paciente_id) !== String(id)));
-        } catch (err) {
-            alert(err.response?.data?.error || err.message || 'Error al eliminar');
-        } finally {
-            setDeletingId(null);
         }
     };
 
@@ -163,35 +147,6 @@ const Dashboard = () => {
                 </div>
             </div>
 
-            {/* Fila 3: Papelera de pacientes sin atender */}
-            {deletablePatients.length > 0 && (
-                <div className="premium-card glass-panel">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-                        <span style={{ fontSize: '1.2rem' }}>🗑️</span>
-                        <h3 style={{ fontSize: '1rem' }}>Papelera — Pacientes sin atender</h3>
-                        <span style={{ background: 'rgba(255,82,82,0.15)', color: '#ff5252', border: '1px solid #ff5252', borderRadius: '20px', padding: '2px 10px', fontSize: '0.75rem', fontWeight: '700' }}>
-                            {deletablePatients.length}
-                        </span>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '4px' }}>— no tienen sesiones atendidas</span>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '8px', maxHeight: '260px', overflowY: 'auto' }}>
-                        {deletablePatients.map(p => (
-                            <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid var(--border)' }}>
-                                <div>
-                                    <p style={{ fontWeight: '600', fontSize: '0.88rem' }}>{p.nombre} {p.apellido}</p>
-                                    <p style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>HC: {p.historia_clinica || '—'}</p>
-                                </div>
-                                <button
-                                    onClick={() => deletePatient(p.id, `${p.nombre} ${p.apellido}`)}
-                                    disabled={deletingId === p.id}
-                                    style={{ background: 'rgba(255,82,82,0.12)', border: '1px solid #ff5252', color: '#ff5252', padding: '6px 12px', borderRadius: '8px', cursor: deletingId === p.id ? 'not-allowed' : 'pointer', fontSize: '0.8rem', fontWeight: '700', whiteSpace: 'nowrap' }}>
-                                    {deletingId === p.id ? '...' : '🗑 Eliminar'}
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
         </div>
     );
 };
@@ -231,7 +186,7 @@ const Login = () => {
         const kine = professionals.find(p => String(p.id) === String(selectedKineId));
         if (!kine) { alert('Seleccioná tu nombre de la lista.'); return; }
 
-        if (password === kine.matricula) {
+        if (String(password).trim() === String(kine.matricula).trim()) {
             login({ id: kine.id, nombre: kine.nombre, matricula: kine.matricula, role: 'KINESIOLOGO' });
         } else {
             alert('Matrícula incorrecta para este profesional.');

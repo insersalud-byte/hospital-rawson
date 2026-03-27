@@ -133,7 +133,7 @@ const PatientPanel = ({ patient, onClose, onSaved }) => {
 
     return (
         <div style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)',
+            position: 'fixed', top: 0, right: 0, bottom: 0, left: 0, background: 'rgba(0,0,0,0.9)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             zIndex: 9999, padding: '15px'
         }}>
@@ -439,8 +439,8 @@ const AgendaCalendar = () => {
 
     useEffect(() => { fetchAgendaData(); }, [currentDate]);
 
-    const fetchAgendaData = async () => {
-        setLoading(true);
+    const fetchAgendaData = async (silent = false) => {
+        if (!silent) setLoading(true);
         try {
             const [resPatients, resSessions] = await Promise.all([
                 axios.get(`${API_URL}/patients`),
@@ -448,24 +448,33 @@ const AgendaCalendar = () => {
             ]);
             const dateStr = format(currentDate, 'yyyy-MM-dd');
             const validSlots = new Set(['08:00','08:45','09:30','10:15','11:00','11:45','12:30','13:15','14:00','14:45','15:30','16:15','17:00','17:45']);
-            const daySessions = (resSessions.data || []).filter(s => s.fecha === dateStr && s.estado === 'programado' && s.paciente_id);
+            
+            // Incluir todos los estados (programado, asistió, no asistió) para que no desaparezcan al atenderlos
+            const daySessions = (resSessions.data || []).filter(s => 
+                s.fecha === dateStr && s.paciente_id && (s.estado === 'programado' || s.estado === 'asistió' || s.estado === 'no asistió')
+            );
+            
             const newApt = {};
             daySessions.forEach(session => {
                 const horaFull = session.hora || '08:00';
                 const hora = horaFull.substring(0, 5);
-                if (!validSlots.has(hora)) return; // saltear horas fuera de los slots
+                if (!validSlots.has(hora)) return; 
                 const patient = (resPatients.data || []).find(p => String(p.id) === String(session.paciente_id));
-                if (!patient) return; // saltear si paciente no existe
-                const count = Object.keys(newApt).filter(k => k.startsWith(`${hora}-`)).length;
+                if (!patient) return; 
+                
+                // Buscar el siguiente slot libre (hasta 10 pacientes por hora)
+                let count = 0;
+                while (newApt[`${hora}-${count}`]) { count++; }
+                
                 if (count < 10) {
-                    newApt[`${hora}-${count}`] = { ...patient, sessionId: session.id, hora };
+                    newApt[`${hora}-${count}`] = { ...patient, sessionId: session.id, hora, estado: session.estado };
                 }
             });
             setAppointments(newApt);
         } catch (err) {
             console.error("Error cargando agenda:", err);
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     };
 
@@ -481,7 +490,13 @@ const AgendaCalendar = () => {
         return slots;
     };
 
-    const getSlotPatients = (hora) => [0, 1].map(i => appointments[`${hora}-${i}`]).filter(Boolean);
+    const getSlotPatients = (hora) => {
+        const list = [];
+        for (let i = 0; i < 10; i++) {
+            if (appointments[`${hora}-${i}`]) list.push(appointments[`${hora}-${i}`]);
+        }
+        return list;
+    };
     const totalHoy = [...new Set(Object.values(appointments).map(p => p.id))].length;
 
     if (loading) return (
@@ -535,13 +550,26 @@ const AgendaCalendar = () => {
                             <div style={{ flex: 1, display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                                 {!ocupado
                                     ? <span style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.88rem' }}>Sin pacientes</span>
-                                    : patients.map((p, i) => (
-                                        <button key={i} onClick={() => setActivePatient(p)}
-                                            className="vibrant-gradient"
-                                            style={{ padding: '7px 16px', borderRadius: '20px', fontWeight: '600', fontSize: '0.85rem', border: 'none', cursor: 'pointer', color: 'white' }}>
-                                            👤 {p.nombre} {p.apellido}
-                                        </button>
-                                    ))}
+                                    : patients.map((p, i) => {
+                                        const isAttended = p.estado === 'asistió';
+                                        const isMissed = p.estado === 'no asistió';
+                                        
+                                        return (
+                                            <button key={i} onClick={() => setActivePatient(p)}
+                                                className={isAttended || isMissed ? "" : "vibrant-gradient"}
+                                                style={{
+                                                    padding: '7px 16px', borderRadius: '20px', fontWeight: '600',
+                                                    fontSize: '0.85rem', border: isAttended ? '2px solid #00e676' : isMissed ? '2px solid #ff5252' : 'none',
+                                                    cursor: 'pointer', color: 'white', outline: 'none',
+                                                    background: isAttended ? 'rgba(0,230,118,0.15)' : isMissed ? 'rgba(255,82,82,0.15)' : undefined,
+                                                    opacity: isAttended || isMissed ? 0.8 : 1,
+                                                    display: 'flex', alignItems: 'center', gap: '5px'
+                                                }}>
+                                                {isAttended ? '✅ ' : isMissed ? '❌ ' : '👤 '}
+                                                {p.nombre} {p.apellido}
+                                            </button>
+                                        );
+                                    })}
                             </div>
                         </div>
                     );
@@ -553,7 +581,7 @@ const AgendaCalendar = () => {
                 <PatientPanel
                     patient={activePatient}
                     onClose={() => setActivePatient(null)}
-                    onSaved={() => { fetchAgendaData(); setActivePatient(null); }}
+                    onSaved={() => { fetchAgendaData(true); setActivePatient(null); }}
                 />
             )}
 
