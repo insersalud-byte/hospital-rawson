@@ -80,7 +80,7 @@ const PatientPanel = ({ patient, onClose, onSaved }) => {
         try {
             const sessionId = patient.sessionId;
             if (sessionId) {
-                await axios.put(`${API_URL}/sessions/${sessionId}`, {
+                await axios.post(`${API_URL}/sessions/${sessionId}`, {
                     estado,
                     tratamiento_id: selectedTreatments.size > 0 ? [...selectedTreatments][0] : null,
                     observaciones: obsCompleta,

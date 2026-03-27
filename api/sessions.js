@@ -49,7 +49,23 @@ module.exports = async (req, res) => {
             return res.json({ success: true, created: sesiones.length });
         }
 
-        // POST /api/sessions
+        // POST /api/sessions/:id  →  UPDATE
+        if (req.method === 'POST' && parts[0] && parts[0] !== 'batch') {
+            const idToUpdate = parseId(parts[0]);
+            if (!idToUpdate) return res.status(400).json({ error: 'ID de sesión inválido' });
+            const { estado, tratamiento_id, observaciones, kinesiologo_nombre_snapshot, tratamientos_texto } = req.body;
+            const { error } = await supabase.from('rawson_sesiones').update({
+                estado,
+                tratamiento_id: parseId(tratamiento_id),
+                observaciones: observaciones || null,
+                kinesiologo_nombre_snapshot: kinesiologo_nombre_snapshot || null,
+                tratamientos_texto: tratamientos_texto || null,
+            }).eq('id', idToUpdate);
+            if (error) throw error;
+            return res.json({ success: true });
+        }
+
+        // POST /api/sessions  →  CREATE
         if (req.method === 'POST') {
             const { paciente_id, fecha, hora, kinesiologo_id, kinesiologo_nombre_snapshot, estado, tratamiento_id, patologia_id, observaciones, tratamientos_texto } = req.body;
             const { error } = await supabase.from('rawson_sesiones').insert({
@@ -69,23 +85,19 @@ module.exports = async (req, res) => {
             return res.json({ success: true });
         }
 
-        // PUT /api/sessions/:id
+        // PUT /api/sessions/:id (kept for backwards compat)
         if (req.method === 'PUT' || req.method === 'put') {
             const pathParts = url.pathname.split('/').filter(Boolean);
             const idToUpdate = parseId(pathParts[pathParts.length - 1]);
-            
-            console.log('PUT /api/sessions/:id requested for ID:', idToUpdate);
             if (!idToUpdate) return res.status(400).json({ error: 'ID de sesión requerido' });
-
             const { estado, tratamiento_id, observaciones, kinesiologo_nombre_snapshot, tratamientos_texto } = req.body;
-            const updateData = {
+            const { error } = await supabase.from('rawson_sesiones').update({
                 estado,
                 tratamiento_id: parseId(tratamiento_id),
                 observaciones: observaciones || null,
                 kinesiologo_nombre_snapshot: kinesiologo_nombre_snapshot || null,
                 tratamientos_texto: tratamientos_texto || null,
-            };
-            const { error } = await supabase.from('rawson_sesiones').update(updateData).eq('id', idToUpdate);
+            }).eq('id', idToUpdate);
             if (error) throw error;
             return res.json({ success: true });
         }
