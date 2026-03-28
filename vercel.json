@@ -1,7 +1,13 @@
 {
   "version": 2,
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/(.*)", "destination": "/index.html" }
+  "routes": [
+    { "src": "/api/patients(/.+)?$", "dest": "/api/patients.js" },
+    { "src": "/api/sessions(/.+)?$", "dest": "/api/sessions.js" },
+    { "src": "/api/professionals(/.+)?$", "dest": "/api/professionals.js" },
+    { "src": "/api/pathologies(/.+)?$", "dest": "/api/pathologies.js" },
+    { "src": "/api/treatments(/.+)?$", "dest": "/api/treatments.js" },
+    { "src": "/api/stats(/.+)?$", "dest": "/api/stats.js" },
+    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
