@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { createPortal } from 'react-dom';
 import axios from 'axios';
 import { Plus, Search, Phone, Hospital, MessageCircle, Calendar, ChevronLeft, ChevronRight, Edit, Trash2 } from 'lucide-react';
@@ -193,6 +194,7 @@ const MultiDateCalendar = ({ selectedDates, onToggleDate }) => {
 
 // ─── Lista de Pacientes ───────────────────────────────────────────────────────
 const PatientList = () => {
+    const { isAdmin } = useAuth();
     const [patients, setPatients] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [showForm, setShowForm] = useState(false);
@@ -246,10 +248,12 @@ const PatientList = () => {
                             </button>
                         )}
                     </div>
-                    <button onClick={() => { setPatientToEdit(null); setShowForm(true); }} className="vibrant-gradient" 
-                        style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', borderRadius: '12px', fontWeight: '700', border: 'none', cursor: 'pointer', color: 'white' }}>
-                        <Plus size={18} /> Nuevo Paciente
-                    </button>
+                    {isAdmin && (
+                        <button onClick={() => { setPatientToEdit(null); setShowForm(true); }} className="vibrant-gradient"
+                            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', borderRadius: '12px', fontWeight: '700', border: 'none', cursor: 'pointer', color: 'white' }}>
+                            <Plus size={18} /> Nuevo Paciente
+                        </button>
+                    )}
                 </div>
 
                 <div className="search-bar premium-card" style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '15px 20px', width: '100%', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--primary)', borderRadius: '14px' }}>
@@ -282,21 +286,25 @@ const PatientList = () => {
                                     title="Ver historial y estadísticas">
                                     📋 Historial
                                 </button>
-                                <button onClick={() => deletePatient(patient.id, `${patient.nombre} ${patient.apellido}`)}
-                                    style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(255,82,82,0.1)', border: '1px solid #ff5252', color: '#ff5252', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}
-                                    title="Eliminar paciente">
-                                    <Trash2 size={14} />
-                                </button>
-                                <button onClick={() => { setPatientToEdit(patient); setShowForm(true); }}
-                                    style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.08)', border: '1px solid var(--border)', color: 'white', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}
-                                    title="Modificar Paciente">
-                                    <Edit size={14} /> Modificar
-                                </button>
-                                <button onClick={() => { setPatientToEdit(patient); setShowForm(true); }}
-                                    style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0,136,204,0.15)', border: '1px solid var(--primary)', color: 'var(--primary)', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}
-                                    title="Agregar nuevas sesiones a este paciente">
-                                    <Calendar size={14} /> Nuevas Sesiones
-                                </button>
+                                {isAdmin && (
+                                    <>
+                                        <button onClick={() => deletePatient(patient.id, `${patient.nombre} ${patient.apellido}`)}
+                                            style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(255,82,82,0.1)', border: '1px solid #ff5252', color: '#ff5252', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}
+                                            title="Eliminar paciente">
+                                            <Trash2 size={14} />
+                                        </button>
+                                        <button onClick={() => { setPatientToEdit(patient); setShowForm(true); }}
+                                            style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.08)', border: '1px solid var(--border)', color: 'white', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}
+                                            title="Modificar Paciente">
+                                            <Edit size={14} /> Modificar
+                                        </button>
+                                        <button onClick={() => { setPatientToEdit(patient); setShowForm(true); }}
+                                            style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0,136,204,0.15)', border: '1px solid var(--primary)', color: 'var(--primary)', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}
+                                            title="Agregar nuevas sesiones a este paciente">
+                                            <Calendar size={14} /> Nuevas Sesiones
+                                        </button>
+                                    </>
+                                )}
                             </div>
                         </div>
 
