@@ -2,15 +2,12 @@ const { supabase, parseId } = require('./_supabase');
 
 module.exports = async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     if (req.method === 'OPTIONS') return res.status(200).end();
 
     try {
-        if (!supabase) throw new Error('Supabase client not initialized. Check SUPABASE_URL and SUPABASE_ANON_KEY/SUPABASE_SERVICE_ROLE_KEY.');
-
-        const url = new URL(req.url, `http://${req.headers.host}`);
-        const parts = url.pathname.replace('/api/professionals', '').split('/').filter(Boolean);
+        if (!supabase) throw new Error('Supabase client not initialized.');
 
         if (req.method === 'GET') {
             const { data, error } = await supabase.from('rawson_profesionales').select('*').order('nombre');
@@ -19,32 +16,27 @@ module.exports = async (req, res) => {
         }
 
         if (req.method === 'POST') {
-            const { id, nombre, matricula, especialidad } = req.body;
+            const { _action, id, nombre, matricula, especialidad } = req.body;
+
+            if (_action === 'delete') {
+                const profId = parseId(id);
+                if (!profId) return res.status(400).json({ error: 'ID requerido' });
+                const { error: errSes } = await supabase.from('rawson_sesiones').update({ kinesiologo_id: null }).eq('kinesiologo_id', profId);
+                if (errSes) throw errSes;
+                const { error } = await supabase.from('rawson_profesionales').delete().eq('id', profId);
+                if (error) throw error;
+                return res.json({ success: true });
+            }
+
             const recordId = parseId(id) || Date.now();
             const { error } = await supabase.from('rawson_profesionales').upsert({ id: recordId, nombre, matricula, especialidad }, { onConflict: 'id' });
             if (error) throw error;
             return res.json({ success: true, id: recordId });
         }
 
-        if (req.method === 'DELETE' && parts[0]) {
-            const profId = parseId(parts[0]);
-            // Desvincular sesiones que referencian este kinesiólogo (FK constraint)
-            const { error: errSes } = await supabase
-                .from('rawson_sesiones')
-                .update({ kinesiologo_id: null })
-                .eq('kinesiologo_id', profId);
-            if (errSes) throw errSes;
-            const { error } = await supabase.from('rawson_profesionales').delete().eq('id', profId);
-            if (error) throw error;
-            return res.json({ success: true });
-        }
-
-        return res.status(405).json({ error: 'Method not allowed' });
+        return res.status(405).json({ error: 'Method not allowed', method: req.method });
     } catch (error) {
         console.error('API Error:', error);
-        return res.status(500).json({ 
-            error: error.message || 'Internal Server Error',
-            details: error
-        });
+        return res.status(500).json({ error: error.message || 'Internal Server Error', details: error });
     }
 };

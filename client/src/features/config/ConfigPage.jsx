@@ -51,7 +51,7 @@ const ConfigPage = () => {
     const deleteProfessional = async (id, nombre) => {
         if (!window.confirm(`¿Estás seguro que querés eliminar permanentemente al kinesiólogo ${nombre}?`)) return;
         try {
-            await axios.delete(`${API_URL}/professionals/${id}`);
+            await axios.post(`${API_URL}/professionals`, { _action: 'delete', id });
             await fetchConfig();
             showSuccess('✅ Kinesiólogo eliminado');
         } catch (err) {
@@ -92,7 +92,7 @@ const ConfigPage = () => {
     const deletePathology = async (id, nombre) => {
         if (!window.confirm(`¿Estás seguro que querés eliminar la patología "${nombre}"?`)) return;
         try {
-            await axios.delete(`${API_URL}/pathologies/${id}`);
+            await axios.post(`${API_URL}/pathologies`, { _action: 'delete', id });
             await fetchConfig();
             showSuccess('✅ Patología eliminada');
         } catch (err) {
@@ -105,7 +105,7 @@ const ConfigPage = () => {
     const deleteTreatment = async (id, nombre) => {
         if (!window.confirm(`¿Estás seguro que querés eliminar el tratamiento "${nombre}"?`)) return;
         try {
-            await axios.delete(`${API_URL}/treatments/${id}`);
+            await axios.post(`${API_URL}/treatments`, { _action: 'delete', id });
             await fetchConfig();
             showSuccess('✅ Tratamiento eliminado');
         } catch (err) {
@@ -118,7 +118,7 @@ const ConfigPage = () => {
     const deletePatient = async (id, nombre) => {
         if (!window.confirm(`¿Eliminar al paciente ${nombre}? Se borrarán también sus turnos pendientes.`)) return;
         try {
-            await axios.delete(`${API_URL}/patients/${id}`);
+            await axios.post(`${API_URL}/patients`, { _action: 'delete', id });
             await fetchConfig();
             showSuccess('✅ Paciente eliminado');
         } catch (err) {
@@ -131,7 +131,7 @@ const ConfigPage = () => {
     const deleteSession = async (id) => {
         if (!window.confirm('¿Eliminar este turno?')) return;
         try {
-            await axios.delete(`${API_URL}/sessions/${id}`);
+            await axios.post(`${API_URL}/sessions`, { _action: 'delete', id });
             await fetchConfig();
             showSuccess('✅ Turno eliminado');
         } catch (err) {

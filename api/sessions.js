@@ -2,12 +2,12 @@ const { supabase, parseId } = require('./_supabase');
 
 module.exports = async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     if (req.method === 'OPTIONS') return res.status(200).end();
 
     try {
-        if (!supabase) throw new Error('Supabase client not initialized. Check SUPABASE_URL and SUPABASE_ANON_KEY/SUPABASE_SERVICE_ROLE_KEY.');
+        if (!supabase) throw new Error('Supabase client not initialized.');
 
         const url = new URL(req.url, `http://${req.headers.host}`);
         const parts = url.pathname.replace('/api/sessions', '').split('/').filter(Boolean);
@@ -32,41 +32,52 @@ module.exports = async (req, res) => {
             return res.json(data.map(s => ({ ...s, nombre: s.paciente?.nombre, apellido: s.paciente?.apellido })));
         }
 
-        // POST /api/sessions/batch
-        if (req.method === 'POST' && parts[0] === 'batch') {
-            const { sesiones } = req.body;
-            if (!Array.isArray(sesiones) || sesiones.length === 0)
-                return res.status(400).json({ error: 'Se requiere un array de sesiones' });
-            const { error } = await supabase.from('rawson_sesiones').insert(
-                sesiones.map(s => ({
-                    ...s,
-                    paciente_id: parseId(s.paciente_id),
-                    estado: s.estado || 'programado',
-                    created_at: new Date().toISOString()
-                }))
-            );
-            if (error) throw error;
-            return res.json({ success: true, created: sesiones.length });
-        }
-
-        // POST /api/sessions/:id  →  UPDATE
-        if (req.method === 'POST' && parts[0] && parts[0] !== 'batch') {
-            const idToUpdate = parseId(parts[0]);
-            if (!idToUpdate) return res.status(400).json({ error: 'ID de sesión inválido' });
-            const { estado, tratamiento_id, observaciones, kinesiologo_nombre_snapshot, tratamientos_texto } = req.body;
-            const { error } = await supabase.from('rawson_sesiones').update({
-                estado,
-                tratamiento_id: parseId(tratamiento_id),
-                observaciones: observaciones || null,
-                kinesiologo_nombre_snapshot: kinesiologo_nombre_snapshot || null,
-                tratamientos_texto: tratamientos_texto || null,
-            }).eq('id', idToUpdate);
-            if (error) throw error;
-            return res.json({ success: true });
-        }
-
-        // POST /api/sessions  →  CREATE
         if (req.method === 'POST') {
+            const { _action, id } = req.body;
+
+            // POST { _action: 'delete', id } → DELETE session
+            if (_action === 'delete') {
+                const sessionId = parseId(id);
+                if (!sessionId) return res.status(400).json({ error: 'ID requerido' });
+                const { error } = await supabase.from('rawson_sesiones').delete().eq('id', sessionId);
+                if (error) throw error;
+                return res.json({ success: true });
+            }
+
+            // POST { _action: 'update', id, ...fields } → UPDATE session
+            if (_action === 'update') {
+                const sessionId = parseId(id);
+                if (!sessionId) return res.status(400).json({ error: 'ID requerido' });
+                const { estado, tratamiento_id, observaciones, kinesiologo_nombre_snapshot, tratamientos_texto } = req.body;
+                const { error } = await supabase.from('rawson_sesiones').update({
+                    estado,
+                    tratamiento_id: parseId(tratamiento_id),
+                    observaciones: observaciones || null,
+                    kinesiologo_nombre_snapshot: kinesiologo_nombre_snapshot || null,
+                    tratamientos_texto: tratamientos_texto || null,
+                }).eq('id', sessionId);
+                if (error) throw error;
+                return res.json({ success: true });
+            }
+
+            // POST { sesiones: [...] } → batch create
+            if (req.body.sesiones) {
+                const { sesiones } = req.body;
+                if (!Array.isArray(sesiones) || sesiones.length === 0)
+                    return res.status(400).json({ error: 'Se requiere un array de sesiones' });
+                const { error } = await supabase.from('rawson_sesiones').insert(
+                    sesiones.map(s => ({
+                        ...s,
+                        paciente_id: parseId(s.paciente_id),
+                        estado: s.estado || 'programado',
+                        created_at: new Date().toISOString()
+                    }))
+                );
+                if (error) throw error;
+                return res.json({ success: true, created: sesiones.length });
+            }
+
+            // POST → CREATE session
             const { paciente_id, fecha, hora, kinesiologo_id, kinesiologo_nombre_snapshot, estado, tratamiento_id, patologia_id, observaciones, tratamientos_texto } = req.body;
             const { error } = await supabase.from('rawson_sesiones').insert({
                 paciente_id: parseId(paciente_id),
@@ -85,37 +96,7 @@ module.exports = async (req, res) => {
             return res.json({ success: true });
         }
 
-        // PUT /api/sessions/:id (kept for backwards compat)
-        if (req.method === 'PUT' || req.method === 'put') {
-            const pathParts = url.pathname.split('/').filter(Boolean);
-            const idToUpdate = parseId(pathParts[pathParts.length - 1]);
-            if (!idToUpdate) return res.status(400).json({ error: 'ID de sesión requerido' });
-            const { estado, tratamiento_id, observaciones, kinesiologo_nombre_snapshot, tratamientos_texto } = req.body;
-            const { error } = await supabase.from('rawson_sesiones').update({
-                estado,
-                tratamiento_id: parseId(tratamiento_id),
-                observaciones: observaciones || null,
-                kinesiologo_nombre_snapshot: kinesiologo_nombre_snapshot || null,
-                tratamientos_texto: tratamientos_texto || null,
-            }).eq('id', idToUpdate);
-            if (error) throw error;
-            return res.json({ success: true });
-        }
-
-        // DELETE /api/sessions/:id
-        if (req.method === 'DELETE') {
-            const pathParts = url.pathname.split('/').filter(Boolean);
-            const idToDelete = parseId(pathParts[pathParts.length - 1]);
-            
-            console.log('DELETE /api/sessions/:id requested for ID:', idToDelete);
-            if (!idToDelete) return res.status(400).json({ error: 'ID de sesión requerido' });
-
-            const { error } = await supabase.from('rawson_sesiones').delete().eq('id', idToDelete);
-            if (error) throw error;
-            return res.json({ success: true });
-        }
-
-        return res.status(405).json({ error: 'Method not allowed', method: req.method, path: url.pathname, parts });
+        return res.status(405).json({ error: 'Method not allowed', method: req.method });
     } catch (error) {
         console.error('API Error:', error);
         return res.status(500).json({ error: error.message || 'Internal Server Error' });

@@ -1,13 +1,13 @@
 {
   "version": 2,
-  "routes": [
-    { "src": "/api/patients(/.+)?$", "dest": "/api/patients.js" },
-    { "src": "/api/sessions(/.+)?$", "dest": "/api/sessions.js" },
-    { "src": "/api/professionals(/.+)?$", "dest": "/api/professionals.js" },
-    { "src": "/api/pathologies(/.+)?$", "dest": "/api/pathologies.js" },
-    { "src": "/api/treatments(/.+)?$", "dest": "/api/treatments.js" },
-    { "src": "/api/stats(/.+)?$", "dest": "/api/stats.js" },
-    { "src": "/api/(.*)", "dest": "/api/$1" },
-    { "src": "/(.*)", "dest": "/index.html" }
+  "rewrites": [
+    { "source": "/api/patients/:path*", "destination": "/api/patients.js" },
+    { "source": "/api/sessions/:path*", "destination": "/api/sessions.js" },
+    { "source": "/api/professionals/:path*", "destination": "/api/professionals.js" },
+    { "source": "/api/pathologies/:path*", "destination": "/api/pathologies.js" },
+    { "source": "/api/treatments/:path*", "destination": "/api/treatments.js" },
+    { "source": "/api/stats/:path*", "destination": "/api/stats.js" },
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

@@ -215,7 +215,7 @@ const PatientList = () => {
     const deletePatient = async (id, nombre) => {
         if (!window.confirm(`¿Eliminar a ${nombre}? Se borrarán sus turnos pendientes.`)) return;
         try {
-            await axios.delete(`${API_URL}/patients/${id}`);
+            await axios.post(`${API_URL}/patients`, { _action: 'delete', id });
             await fetchPatients();
         } catch (err) {
             console.error('Error al eliminar paciente:', err);

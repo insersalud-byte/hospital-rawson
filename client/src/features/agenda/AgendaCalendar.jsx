@@ -80,7 +80,9 @@ const PatientPanel = ({ patient, onClose, onSaved }) => {
         try {
             const sessionId = patient.sessionId;
             if (sessionId) {
-                await axios.post(`${API_URL}/sessions/${sessionId}`, {
+                await axios.post(`${API_URL}/sessions`, {
+                    _action: 'update',
+                    id: sessionId,
                     estado,
                     tratamiento_id: selectedTreatments.size > 0 ? [...selectedTreatments][0] : null,
                     observaciones: obsCompleta,
@@ -118,7 +120,7 @@ const PatientPanel = ({ patient, onClose, onSaved }) => {
         if (!window.confirm(`¿Estás seguro que querés CANCELAR y eliminar el turno de ${patient.nombre} a las ${patient.hora}?`)) return;
         setSaving(true);
         try {
-            await axios.delete(`${API_URL}/sessions/${patient.sessionId}`);
+            await axios.post(`${API_URL}/sessions`, { _action: 'delete', id: patient.sessionId });
             onSaved();
             onClose();
         } catch (err) {

@@ -45,7 +45,9 @@ const SessionFinalizeModal = ({ slot, scheduledPatients, onClose, onSave }) => {
         try {
             const sessionId = selectedPatient.sessionId;
             if (sessionId) {
-                await axios.post(`${API_URL}/sessions/${sessionId}`, {
+                await axios.post(`${API_URL}/sessions`, {
+                    _action: 'update',
+                    id: sessionId,
                     estado,
                     tratamiento_id: firstTreatmentId,
                     observaciones: obsCompletas,
