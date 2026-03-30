@@ -562,7 +562,7 @@ const AgendaCalendar = () => {
                                         const isMissed = p.estado === 'no asistió';
                                         
                                         return (
-                                            <button key={i} onClick={e => { e.stopPropagation(); if (isAdmin) setActivePatient(p); }}
+                                            <button key={i} onClick={e => { e.stopPropagation(); setActivePatient(p); }}
                                                 className={isAttended || isMissed ? "" : "vibrant-gradient"}
                                                 style={{
                                                     padding: '7px 16px', borderRadius: '20px', fontWeight: '600',
@@ -583,8 +583,8 @@ const AgendaCalendar = () => {
                 })}
             </div>
 
-            {/* Panel de paciente activo — solo admin */}
-            {isAdmin && activePatient && (
+            {/* Panel de paciente activo */}
+            {activePatient && (
                 <PatientPanel
                     patient={activePatient}
                     onClose={() => setActivePatient(null)}

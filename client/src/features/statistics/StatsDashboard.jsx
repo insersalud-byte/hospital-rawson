@@ -36,8 +36,8 @@ const StatsDashboard = () => {
             }
 
             const url = filterType === 'historico'
-                ? `${API_URL}/stats/summary`
-                : `${API_URL}/stats/summary?start=${start}&end=${end}`;
+                ? `${API_URL}/stats`
+                : `${API_URL}/stats?start=${start}&end=${end}`;
 
             const res = await axios.get(url);
             setStats(res.data);
