@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { format, addMinutes, startOfDay, setHours, setMinutes } from 'date-fns';
+import { format, addMinutes, startOfDay, setHours, setMinutes, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Clock, Users, Timer } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -386,10 +386,12 @@ const textareaStyle = { width: '100%', padding: '12px 14px', borderRadius: '10px
 const btnStyle = { padding: '15px', borderRadius: '12px', fontWeight: '700', fontSize: '0.9rem', cursor: 'pointer', border: 'none', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px' };
 const warnStyle = { fontSize: '0.73rem', color: '#ffea00', marginTop: '5px' };
 
-// ─── Modal Próximos Turnos ───────────────────────────────────────────────────
+// ─── Modal Próximos Turnos (Almanaque) ───────────────────────────────────────────────────
 const UpcomingAppointmentsModal = ({ onClose }) => {
     const [upcoming, setUpcoming] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
+    const [selectedDay, setSelectedDay] = useState(null);
 
     useEffect(() => {
         axios.get(`${API_URL}/sessions`)
@@ -397,38 +399,177 @@ const UpcomingAppointmentsModal = ({ onClose }) => {
                 const now = new Date();
                 const today = startOfDay(now);
                 const list = (Array.isArray(res.data) ? res.data : [])
-                    .filter(s => s.estado === 'programado' && new Date(s.fecha + 'T00:00:00') > today)
+                    .filter(s => s.estado === 'programado' && new Date(s.fecha + 'T00:00:00') >= today)
                     .sort((a,b) => new Date(a.fecha + 'T' + a.hora) - new Date(b.fecha + 'T' + b.hora));
-                setUpcoming(list.slice(0, 50)); // Mostrar top 50
+                setUpcoming(list);
             })
             .catch(() => setUpcoming([]))
             .finally(() => setLoading(false));
     }, []);
 
+    // Funciones del calendario
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(monthStart);
+    const startDate = startOfWeek(monthStart, { weekStartsOn: 1 }); // Comienza en lunes
+    const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
+    const dateFormat = "d";
+    const days = eachDayOfInterval({ start: startDate, end: endDate });
+
+    const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
+    const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
+
+    const getAppointmentsForDay = (day) => {
+        return upcoming.filter(s => isSameDay(parseISO(s.fecha), day));
+    };
+
+    const renderTurns = () => {
+        if (!selectedDay) return (
+            <div style={{ textAlign: 'center', marginTop: '40px' }}>
+                <div style={{ fontSize: '3rem', marginBottom: '12px' }}>📅</div>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Seleccioná un día en el almanaque para ver los turnos.</p>
+            </div>
+        );
+        
+        const dayAppointments = getAppointmentsForDay(selectedDay);
+        if (dayAppointments.length === 0) return (
+            <div style={{ textAlign: 'center', marginTop: '40px' }}>
+                <div style={{ fontSize: '2.5rem', marginBottom: '12px' }}>🈳</div>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No hay turnos agendados para este día.</p>
+            </div>
+        );
+
+        const morning = dayAppointments.filter(s => parseInt(s.hora.split(':')[0], 10) < 13);
+        const afternoon = dayAppointments.filter(s => parseInt(s.hora.split(':')[0], 10) >= 13);
+
+        const renderTurnItem = (s, idx) => (
+            <div key={idx} style={{
+                padding: '10px 14px',
+                background: 'rgba(255,255,255,0.05)',
+                borderRadius: '10px',
+                marginBottom: '8px',
+                borderLeft: '3px solid var(--primary)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                transition: 'background 0.15s',
+            }}>
+                <span style={{ fontWeight: '700', fontSize: '0.9rem' }}>
+                    👤 {s.paciente_nombre} {s.paciente_apellido}
+                </span>
+                <span style={{
+                    color: 'var(--primary)', fontWeight: '700', fontSize: '0.85rem',
+                    background: 'rgba(0,136,204,0.15)', padding: '3px 10px', borderRadius: '20px'
+                }}>🕐 {s.hora}</span>
+            </div>
+        );
+
+        return (
+            <div style={{ overflowY: 'auto', flex: 1, paddingRight: '5px' }}>
+                {/* Mañana */}
+                <div style={{ marginBottom: '6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '8px' }}>
+                    <h4 style={{ color: '#ffb74d', fontSize: '0.95rem', margin: 0 }}>☀️ Mañana</h4>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', background: 'rgba(255,183,77,0.1)', border: '1px solid rgba(255,183,77,0.3)', padding: '2px 8px', borderRadius: '10px' }}>{morning.length} / 15</span>
+                </div>
+                {morning.length === 0
+                    ? <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '20px', fontStyle: 'italic' }}>Sin turnos</p>
+                    : morning.map(renderTurnItem)
+                }
+
+                {/* Tarde */}
+                <div style={{ marginTop: '18px', marginBottom: '6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '8px' }}>
+                    <h4 style={{ color: '#90caf9', fontSize: '0.95rem', margin: 0 }}>🌙 Tarde</h4>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', background: 'rgba(144,202,249,0.1)', border: '1px solid rgba(144,202,249,0.3)', padding: '2px 8px', borderRadius: '10px' }}>{afternoon.length} / 15</span>
+                </div>
+                {afternoon.length === 0
+                    ? <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Sin turnos</p>
+                    : afternoon.map(renderTurnItem)
+                }
+            </div>
+        );
+    };
+
     return (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, padding: '20px', boxSizing: 'border-box' }} onClick={onClose}>
-            <div style={{ width: '100%', maxWidth: '500px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', background: '#1a3050', border: '2px solid #4488cc', borderRadius: '20px', color: 'white' }} onClick={e => e.stopPropagation()}>
+            <div style={{ width: '100%', maxWidth: '850px', height: '80vh', display: 'flex', flexDirection: 'column', background: '#1a3050', border: '2px solid #4488cc', borderRadius: '20px', color: 'white' }} onClick={e => e.stopPropagation()}>
                 <div style={{ padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-                    <h3 style={{ fontSize: '1.2rem' }}>📅 Próximos Turnos Agendados</h3>
+                    <h3 style={{ fontSize: '1.2rem' }}>📅 Almanaque de Turnos</h3>
                     <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.5rem', cursor: 'pointer' }}>✕</button>
                 </div>
-                <div style={{ padding: '20px', overflowY: 'auto', flex: 1, minHeight: 0 }}>
-                    {loading && <p style={{ textAlign: 'center', color: 'var(--text-muted)' }}>Cargando...</p>}
-                    {!loading && upcoming.length === 0 && <p style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No hay turnos futuros programados.</p>}
-                    {!loading && upcoming.map((s, idx) => (
-                        <div key={idx} style={{ padding: '12px', background: 'rgba(255,255,255,0.04)', borderRadius: '10px', marginBottom: '8px', borderLeft: '3px solid var(--primary)' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                                <span style={{ fontWeight: '700', fontSize: '0.95rem' }}>{s.paciente_nombre} {s.paciente_apellido}</span>
-                                <span style={{ color: 'var(--primary)', fontWeight: '700' }}>{s.hora}</span>
+                
+                <div style={{ display: 'flex', flexWrap: 'wrap', flex: 1, minHeight: 0 }}>
+                    {/* Izquierda: Almanaque */}
+                    <div style={{ flex: '1 1 350px', padding: '20px', borderRight: '1px solid rgba(255,255,255,0.15)', overflowY: 'auto' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                            <button onClick={prevMonth} className="glass-panel" style={{ padding: '6px 12px', borderRadius: '10px', cursor: 'pointer', border: 'none', color: 'white', background: 'rgba(255,255,255,0.1)' }}>◀</button>
+                            <div style={{ fontWeight: '700', fontSize: '1.1rem', textTransform: 'capitalize' }}>
+                                {format(currentMonth, 'MMMM yyyy', { locale: es })}
                             </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                                <span style={{ textTransform: 'capitalize' }}>🗓️ {s.fecha ? format(new Date(s.fecha + 'T00:00:00'), "EEEE d 'de' MMMM", { locale: es }) : '—'}</span>
-                            </div>
+                            <button onClick={nextMonth} className="glass-panel" style={{ padding: '6px 12px', borderRadius: '10px', cursor: 'pointer', border: 'none', color: 'white', background: 'rgba(255,255,255,0.1)' }}>▶</button>
                         </div>
-                    ))}
+                        
+                        {/* Cabecera Días */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', textAlign: 'center', marginBottom: '10px', fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                            {['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa', 'Do'].map(d => <div key={d}>{d}</div>)}
+                        </div>
+                        
+                        {/* Grilla Días */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px' }}>
+                            {days.map((day) => {
+                                const isCurrentMonth = isSameMonth(day, monthStart);
+                                const isSelected = selectedDay && isSameDay(day, selectedDay);
+                                const dayAppts = getAppointmentsForDay(day);
+                                const dayApptCount = dayAppts.length;
+                                const isToday = isSameDay(day, new Date());
+                                return (
+                                    <div 
+                                        key={day.toString()} 
+                                        onClick={() => setSelectedDay(isSelected ? null : day)}
+                                        style={{ 
+                                            padding: '10px 4px 8px', 
+                                            textAlign: 'center', 
+                                            cursor: 'pointer',
+                                            borderRadius: '10px',
+                                            border: isSelected ? '2px solid #00e676' : isToday ? '1px solid var(--primary)' : '1px solid var(--border)',
+                                            background: isSelected ? 'rgba(0,230,118,0.15)' : dayApptCount > 0 ? 'rgba(0,136,204,0.1)' : 'rgba(255,255,255,0.02)',
+                                            color: !isCurrentMonth ? 'rgba(255,255,255,0.25)' : 'white',
+                                            position: 'relative',
+                                            transition: 'all 0.18s',
+                                            boxShadow: isSelected ? '0 0 0 2px rgba(0,230,118,0.3)' : 'none',
+                                        }}
+                                    >
+                                        <span style={{ fontSize: '0.88rem', fontWeight: isSelected ? '800' : isToday ? '800' : '500', color: isToday && !isSelected ? 'var(--primary)' : undefined }}>{format(day, dateFormat)}</span>
+                                        {dayApptCount > 0 && (
+                                            <div style={{ marginTop: '4px', display: 'flex', justifyContent: 'center', gap: '2px', flexWrap: 'wrap' }}>
+                                                <span style={{ fontSize: '0.62rem', fontWeight: '700', color: isSelected ? '#00e676' : 'var(--primary)', background: isSelected ? 'rgba(0,230,118,0.2)' : 'rgba(0,136,204,0.25)', padding: '1px 5px', borderRadius: '8px' }}>
+                                                    {dayApptCount} 👤
+                                                </span>
+                                            </div>
+                                        )}
+                                        {isToday && <div style={{ width: '5px', height: '5px', background: 'var(--primary)', borderRadius: '50%', margin: '3px auto 0' }} />}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                    
+                    {/* Derecha: Turnos del día */}
+                    <div style={{ flex: '1 1 350px', padding: '20px', background: 'rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                        <div style={{ marginBottom: '16px', textAlign: 'center' }}>
+                            <h3 style={{ fontSize: '1.05rem', fontWeight: '800', textTransform: 'capitalize', color: selectedDay ? 'white' : 'var(--text-muted)' }}>
+                                {selectedDay ? format(selectedDay, "EEEE d 'de' MMMM", { locale: es }) : 'Detalle del Día'}
+                            </h3>
+                            {selectedDay && (
+                                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                                    {getAppointmentsForDay(selectedDay).length} turno{getAppointmentsForDay(selectedDay).length !== 1 ? 's' : ''} programado{getAppointmentsForDay(selectedDay).length !== 1 ? 's' : ''}
+                                </span>
+                            )}
+                        </div>
+                        {loading ? <p style={{ textAlign: 'center', color: 'var(--text-muted)' }}>Cargando turnos...</p> : renderTurns()}
+                    </div>
                 </div>
+
                 <div style={{ padding: '15px', borderTop: '1px solid rgba(255,255,255,0.15)', textAlign: 'center', flexShrink: 0 }}>
-                    <button onClick={onClose} className="vibrant-gradient" style={{ padding: '10px 30px', borderRadius: '10px', border: 'none', color: 'white', fontWeight: '700', cursor: 'pointer' }}>ENTENDIDO</button>
+                    <button onClick={onClose} className="vibrant-gradient" style={{ padding: '12px 35px', borderRadius: '12px', border: 'none', color: 'white', fontWeight: '700', cursor: 'pointer', letterSpacing: '1px' }}>CERRAR</button>
                 </div>
             </div>
         </div>
@@ -469,11 +610,11 @@ const AgendaCalendar = () => {
                 const patient = (Array.isArray(resPatients.data) ? resPatients.data : []).find(p => String(p.id) === String(session.paciente_id));
                 if (!patient) return; 
                 
-                // Buscar el siguiente slot libre (hasta 10 pacientes por hora)
+                // Buscar el siguiente slot libre (hasta 15 pacientes por turno)
                 let count = 0;
                 while (newApt[`${hora}-${count}`]) { count++; }
                 
-                if (count < 10) {
+                if (count < 15) {
                     newApt[`${hora}-${count}`] = { ...patient, sessionId: session.id, hora, estado: session.estado };
                 }
             });
@@ -499,7 +640,7 @@ const AgendaCalendar = () => {
 
     const getSlotPatients = (hora) => {
         const list = [];
-        for (let i = 0; i < 10; i++) {
+        for (let i = 0; i < 15; i++) {
             if (appointments[`${hora}-${i}`]) list.push(appointments[`${hora}-${i}`]);
         }
         return list;
