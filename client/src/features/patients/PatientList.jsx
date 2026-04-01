@@ -15,6 +15,9 @@ const horariosSlotsList = [
     '14:00', '14:45', '15:30', '16:15', '17:00', '17:45'
 ];
 
+const MORNING_SLOTS = new Set(['08:00', '08:45', '09:30', '10:15', '11:00', '11:45']);
+const MAX_TURNOS_MANANA = 15;
+
 // ─── Historial del Paciente (Componente Expansible) ───────────────────────────
 const PatientHistory = ({ patient }) => {
     const [sessions, setSessions] = useState([]);
@@ -379,6 +382,35 @@ const PatientForm = ({ onClose, onSave, patientToEdit }) => {
             alert('Seleccioná al menos un día en el calendario.');
             return;
         }
+
+        // Validar cupo de turno mañana (máximo 15 pacientes)
+        if (selectedDates.length > 0 && MORNING_SLOTS.has(horaTurno)) {
+            try {
+                const resSessions = await axios.get(`${API_URL}/sessions`);
+                const allSessions = Array.isArray(resSessions.data) ? resSessions.data : [];
+                const diasSinCupo = [];
+                for (const day of selectedDates) {
+                    const dateStr = format(day, 'yyyy-MM-dd');
+                    const sesionesManana = allSessions.filter(s =>
+                        s.fecha === dateStr &&
+                        MORNING_SLOTS.has((s.hora || '').substring(0, 5))
+                    );
+                    if (sesionesManana.length >= MAX_TURNOS_MANANA) {
+                        diasSinCupo.push(format(day, "EEEE d/MM", { locale: es }));
+                    }
+                }
+                if (diasSinCupo.length > 0) {
+                    alert(
+                        `No se puede agregar el turno de mañana. El cupo máximo de ${MAX_TURNOS_MANANA} pacientes ya fue alcanzado en:\n\n` +
+                        diasSinCupo.map(d => `• ${d}`).join('\n')
+                    );
+                    return;
+                }
+            } catch (err) {
+                console.warn('No se pudo verificar el cupo de mañana:', err);
+            }
+        }
+
         setSaving(true);
         try {
             const patientId = isEditing ? patientToEdit.id : Date.now();

@@ -454,7 +454,7 @@ const UpcomingAppointmentsModal = ({ onClose }) => {
                 transition: 'background 0.15s',
             }}>
                 <span style={{ fontWeight: '700', fontSize: '0.9rem' }}>
-                    👤 {s.paciente_nombre} {s.paciente_apellido}
+                    👤 {s.nombre} {s.apellido}
                 </span>
                 <span style={{
                     color: 'var(--primary)', fontWeight: '700', fontSize: '0.85rem',
@@ -538,13 +538,6 @@ const UpcomingAppointmentsModal = ({ onClose }) => {
                                         }}
                                     >
                                         <span style={{ fontSize: '0.88rem', fontWeight: isSelected ? '800' : isToday ? '800' : '500', color: isToday && !isSelected ? 'var(--primary)' : undefined }}>{format(day, dateFormat)}</span>
-                                        {dayApptCount > 0 && (
-                                            <div style={{ marginTop: '4px', display: 'flex', justifyContent: 'center', gap: '2px', flexWrap: 'wrap' }}>
-                                                <span style={{ fontSize: '0.62rem', fontWeight: '700', color: isSelected ? '#00e676' : 'var(--primary)', background: isSelected ? 'rgba(0,230,118,0.2)' : 'rgba(0,136,204,0.25)', padding: '1px 5px', borderRadius: '8px' }}>
-                                                    {dayApptCount} 👤
-                                                </span>
-                                            </div>
-                                        )}
                                         {isToday && <div style={{ width: '5px', height: '5px', background: 'var(--primary)', borderRadius: '50%', margin: '3px auto 0' }} />}
                                     </div>
                                 );
