@@ -464,7 +464,7 @@ const UpcomingAppointmentsModal = ({ onClose }) => {
         );
 
         return (
-            <div style={{ overflowY: 'auto', flex: 1, paddingRight: '5px' }}>
+            <div style={{ overflowY: 'auto', flex: 1, minHeight: 0, paddingRight: '5px' }}>
                 {/* Mañana */}
                 <div style={{ marginBottom: '6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '8px' }}>
                     <h4 style={{ color: '#ffb74d', fontSize: '0.95rem', margin: 0 }}>☀️ Mañana</h4>
@@ -496,7 +496,7 @@ const UpcomingAppointmentsModal = ({ onClose }) => {
                     <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.5rem', cursor: 'pointer' }}>✕</button>
                 </div>
                 
-                <div style={{ display: 'flex', flexWrap: 'wrap', flex: 1, minHeight: 0 }}>
+                <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
                     {/* Izquierda: Almanaque */}
                     <div style={{ flex: '1 1 350px', padding: '20px', borderRight: '1px solid rgba(255,255,255,0.15)', overflowY: 'auto' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
@@ -546,7 +546,7 @@ const UpcomingAppointmentsModal = ({ onClose }) => {
                     </div>
                     
                     {/* Derecha: Turnos del día */}
-                    <div style={{ flex: '1 1 350px', padding: '20px', background: 'rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                    <div style={{ flex: '1 1 350px', padding: '20px', background: 'rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
                         <div style={{ marginBottom: '16px', textAlign: 'center' }}>
                             <h3 style={{ fontSize: '1.05rem', fontWeight: '800', textTransform: 'capitalize', color: selectedDay ? 'white' : 'var(--text-muted)' }}>
                                 {selectedDay ? format(selectedDay, "EEEE d 'de' MMMM", { locale: es }) : 'Detalle del Día'}
