@@ -76,6 +76,24 @@ const StatsDashboard = () => {
 
     return (
         <div className="stats-container print-area">
+            {/* Header de Impresión Profesional (Solo visible al imprimir) */}
+            <div className="print-header" style={{ display: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '15px' }}>
+                    <div style={{ width: '60px', height: '60px', background: '#0088cc', borderRadius: '12px' }}></div>
+                    <div>
+                        <h1 style={{ fontSize: '2.2rem', marginBottom: '4px', color: '#0088cc', fontWeight: '800' }}>Hospital Dr. Guillermo Rawson</h1>
+                        <p style={{ fontSize: '1.1rem', color: '#666', fontWeight: '600' }}>Servicio de Kinesiología y Fisioterapia</p>
+                    </div>
+                </div>
+                <h2 style={{ fontSize: '1.4rem', marginBottom: '20px', color: '#333', borderBottom: '3px solid #0088cc', paddingBottom: '12px', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                    Informe Estadístico Analítico
+                </h2>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '30px', padding: '15px', background: '#f8f9fa', borderRadius: '10px', border: '1px solid #eee' }}>
+                    <p style={{ margin: 0, color: '#444' }}><strong>Período del Informe:</strong> <span style={{ textTransform: 'capitalize' }}>{formatFilterDate()}</span></p>
+                    <p style={{ margin: 0, color: '#444' }}><strong>Fecha de Emisión:</strong> {format(new Date(), "d 'de' MMMM, yyyy HH:mm", { locale: es })}</p>
+                </div>
+            </div>
+
             {/* Header y Filtros (No se imprimen los botones) */}
             <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '25px', flexWrap: 'wrap', gap: '15px' }}>
                 <div>
@@ -126,56 +144,49 @@ const StatsDashboard = () => {
                 )}
             </div>
 
-            {/* Título de Impresión (Solo visible al imprimir o en pantalla como cabecera del cuadro) */}
-            <div style={{ marginBottom: '25px', paddingBottom: '15px', borderBottom: '2px solid var(--primary)' }}>
+            {/* Título de Impresión (No se muestra en pantalla) */}
+            <div className="report-period-title no-print" style={{ marginBottom: '25px', paddingBottom: '15px', borderBottom: '2px solid var(--primary)' }}>
                 <h3 style={{ fontSize: '1.4rem', color: 'var(--primary)', textTransform: 'capitalize' }}>
-                    Período: {formatFilterDate()}
+                    Período del Informe: {formatFilterDate()}
                 </h3>
             </div>
 
-            {/* Tarjetas Superiores */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '30px' }}>
+            {/* Tarjetas Superiores - Métricas Clave */}
+            <div className="stats-grid-metrics" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '30px' }}>
                 <StatMetric title="Total Sesiones Atendidas" value={stats.asistencias?.asistio || 0} color="#00e676" />
-                <StatMetric title="Ausentismo (Inasistencias)" value={stats.asistencias?.no_asistio || 0} color="#ff5252" />
-                <StatMetric title="Total Pacientes Período" value={stats.asistencias?.total || 0} color="var(--primary)" />
+                <StatMetric title="Inasistencias / Ausencias" value={stats.asistencias?.no_asistio || 0} color="#ff5252" />
+                <StatMetric title="Pacientes Atendidos (Periodo)" value={stats.asistencias?.pacientes_atendidos || 0} color="#ffea00" />
+                <StatMetric title="Total Sesiones Programadas" value={stats.asistencias?.total_sesiones || 0} color="var(--primary)" />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', marginBottom: '30px' }}>
+            {/* Gráficos de Resumen */}
+            <div className="stats-grid-two" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', marginBottom: '30px' }}>
                 {/* Asistencias Pie */}
-                <div className="premium-card glass-panel" style={{ height: '360px' }}>
-                    <h3 style={{ marginBottom: '20px', fontSize: '1.05rem' }}>Ratio de Asistencia</h3>
-                    <ResponsiveContainer width="100%" height="90%">
-                        <PieChart>
-                            <Pie data={pieAsistencias} innerRadius={65} outerRadius={95} paddingAngle={5} dataKey="value" label>
-                                {pieAsistencias.map((entry, index) => <Cell key={`cell-${index}`} fill={index === 0 ? '#00e676' : '#ff5252'} />)}
-                            </Pie>
-                            <RechartsTooltip contentStyle={{ background: '#111', border: '1px solid #333', borderRadius: '8px' }} />
-                        </PieChart>
-                    </ResponsiveContainer>
+                <div className="premium-card glass-panel chart-container" style={{ height: '360px' }}>
+                    <h3 style={{ marginBottom: '20px', fontSize: '1.05rem' }}>Ratio de Asistencia (Asistencias vs Ausencias)</h3>
+                    <div style={{ height: '280px', width: '100%' }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie data={pieAsistencias} innerRadius={65} outerRadius={95} paddingAngle={5} dataKey="value" label isAnimationActive={false}>
+                                    {pieAsistencias.map((entry, index) => <Cell key={`cell-${index}`} fill={index === 0 ? '#00e676' : '#ff5252'} />)}
+                                </Pie>
+                                <RechartsTooltip />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
                 </div>
 
-                {/* Kinesiólogos Bar */}
-                <div className="premium-card glass-panel" style={{ height: '360px' }}>
-                    <h3 style={{ marginBottom: '20px', fontSize: '1.05rem' }}>Sesiones Atendidas por Kinesiólogo</h3>
-                    <ResponsiveContainer width="100%" height="90%">
-                        <BarChart data={kineData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                            <XAxis dataKey="name" stroke="#888" fontSize={12} />
-                            <YAxis stroke="#888" fontSize={12} allowDecimals={false} />
-                            <RechartsTooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} contentStyle={{ background: '#111', border: 'none', borderRadius: '8px' }} />
-                            <Bar dataKey="sesiones" fill="url(#colorKine)" radius={[6, 6, 0, 0]} />
-                            <defs>
-                                <linearGradient id="colorKine" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#0088cc" stopOpacity={0.9} />
-                                    <stop offset="95%" stopColor="#0088cc" stopOpacity={0.4} />
-                                </linearGradient>
-                            </defs>
-                        </BarChart>
-                    </ResponsiveContainer>
+                <div className="premium-card glass-panel" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '30px' }}>
+                    <h3 style={{ marginBottom: '15px', color: 'var(--primary)' }}>Resumen del Período</h3>
+                    <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
+                        Este informe refleja la actividad del servicio basada en las firmas digitales de los pacientes y el registro de ausentismo.
+                        El ratio de asistencia permite evaluar el compromiso de los pacientes con su tratamiento.
+                    </p>
                 </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', marginBottom: '30px' }}>
+            {/* Tablas de Detalle */}
+            <div className="stats-grid-two" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', marginBottom: '30px' }}>
                 {/* Patologías */}
                 <div className="premium-card glass-panel">
                     <h3 style={{ marginBottom: '20px', fontSize: '1.05rem', color: '#ffea00' }}>🔬 Top Patologías / Diagnósticos</h3>
@@ -189,7 +200,7 @@ const StatsDashboard = () => {
                 </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
+            <div className="stats-grid-two" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
                 {/* Médicos Derivantes */}
                 <div className="premium-card glass-panel">
                     <h3 style={{ marginBottom: '20px', fontSize: '1.05rem', color: '#9c27b0' }}>👨‍⚕️ Derivaciones por Médico</h3>
@@ -203,23 +214,130 @@ const StatsDashboard = () => {
                 </div>
             </div>
 
-            {/* Estilos para impresión */}
+            {/* Estilos para impresión mejorados - SOLUCIÓN RADICAL PARA PÁGINA EN BLANCO */}
             <style>{`
                 @media print {
-                    body { background: white !important; color: black !important; }
-                    .no-print { display: none !important; }
+                    @page { margin: 1cm; size: A4 portrait; }
+                    
+                    /* Desactivar efectos visuales que rompen el motor de impresión */
+                    * { 
+                        filter: none !important; 
+                        backdrop-filter: none !important; 
+                        -webkit-backdrop-filter: none !important; 
+                        box-shadow: none !important; 
+                        text-shadow: none !important;
+                        transition: none !important;
+                        animation: none !important;
+                    }
+
+                    html, body {
+                        background: white !important;
+                        color: black !important;
+                        width: 100%;
+                        height: auto !important;
+                        overflow: visible !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                    }
+
+                    #root, .layout-container {
+                        display: block !important;
+                        height: auto !important;
+                        min-height: 0 !important;
+                        overflow: visible !important;
+                        background: white !important;
+                    }
+
+                    /* Ocultar elementos innecesarios */
+                    aside, nav, header, footer, .no-print, .user-profile, .logo { 
+                        display: none !important; 
+                        visibility: hidden !important;
+                    }
+                    
+                    /* Forzar que el main ocupe todo el espacio */
+                    main { 
+                        display: block !important;
+                        width: 100% !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        overflow: visible !important;
+                        position: relative !important;
+                    }
+
+                    .stats-container {
+                        display: block !important;
+                        width: 100% !important;
+                        padding: 0 !important;
+                        margin: 0 !important;
+                        background: white !important;
+                    }
+
+                    .print-header { 
+                        display: block !important; 
+                        margin-bottom: 25px; 
+                        visibility: visible !important;
+                    }
+                    
+                    .stats-grid-metrics { 
+                        display: flex !important;
+                        justify-content: space-between !important;
+                        gap: 15px !important;
+                        margin-bottom: 20px !important;
+                    }
+
+                    .stats-grid-metrics > div {
+                        flex: 1 !important;
+                    }
+
+                    .stats-grid-two { 
+                        display: block !important;
+                        width: 100% !important;
+                    }
+                    
                     .premium-card, .glass-panel { 
                         background: white !important; 
-                        border: 1px solid #ddd !important; 
-                        box-shadow: none !important;
+                        border: 1px solid #eee !important; 
                         color: black !important;
-                        page-break-inside: avoid;
-                        margin-bottom: 20px;
+                        page-break-inside: avoid !important;
+                        margin-bottom: 20px !important;
+                        padding: 15px !important;
+                        border-radius: 4px !important;
+                        display: block !important;
                     }
-                    * { color: black !important; text-shadow: none !important; }
-                    .recharts-text { fill: black !important; }
-                    table th { color: black !important; border-bottom: 2px solid #ccc !important; }
-                    table td { border-bottom: 1px solid #eee !important; }
+
+                    .chart-container {
+                        height: 350px !important;
+                        min-height: 350px !important;
+                        border: 1px solid #f0f0f0 !important;
+                    }
+
+                    .recharts-responsive-container {
+                        width: 100% !important;
+                        height: 280px !important;
+                        display: block !important;
+                    }
+                    
+                    h1, h2, h3, h4, p, span, td, th { 
+                        color: black !important; 
+                    }
+
+                    .report-period-title h3 { color: #0088cc !important; }
+
+                    .recharts-text { fill: black !important; font-size: 10px !important; }
+                    .recharts-cartesian-grid-line { stroke: #f0f0f0 !important; }
+                    
+                    table { width: 100% !important; border-collapse: collapse !important; border: 1px solid #eee !important; }
+                    table th { 
+                        border-bottom: 2px solid #0088cc !important; 
+                        background: #fcfcfc !important;
+                        padding: 8px !important;
+                        font-size: 0.9rem;
+                    }
+                    table td { 
+                        border-bottom: 1px solid #f0f0f0 !important; 
+                        padding: 8px !important;
+                        font-size: 0.85rem !important;
+                    }
                 }
             `}</style>
         </div>

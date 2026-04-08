@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { format, addMinutes, startOfDay, setHours, setMinutes, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Clock, Users, Timer } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Users, Timer, Trash2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 const API_URL = import.meta.env.MODE === 'development' ? 'http://localhost:3005/api' : '/api';
@@ -116,17 +116,19 @@ const PatientPanel = ({ patient, onClose, onSaved }) => {
         }
     };
 
-    const handleDeleteTurno = async () => {
-        if (!window.confirm(`¿Estás seguro que querés CANCELAR y eliminar el turno de ${patient.nombre} a las ${patient.hora}?`)) return;
+    const handleDeleteTurno = async (sessionId) => {
+        const idToDelete = sessionId || patient.sessionId;
+        if (!idToDelete) return;
+        if (!window.confirm(`¿Estás seguro que querés ELIMINAR este turno?`)) return;
         setSaving(true);
         try {
-            await axios.post(`${API_URL}/sessions`, { _action: 'delete', id: patient.sessionId });
+            await axios.delete(`${API_URL}/sessions/${idToDelete}`);
             onSaved();
-            onClose();
+            onClose?.();
         } catch (err) {
-            console.error('Error cancelando turno:', err);
+            console.error('Error eliminando turno:', err);
             const msg = err.response?.data?.error || err.message || 'Error desconocido';
-            alert(`Error al cancelar turno: ${msg}`);
+            alert(`Error al eliminar turno: ${msg}`);
             setSaving(false);
         }
     };
@@ -162,12 +164,12 @@ const PatientPanel = ({ patient, onClose, onSaved }) => {
                         </div>
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                             {patient.sessionId && (
-                                <button onClick={handleDeleteTurno} disabled={saving} style={{
+                                <button onClick={() => handleDeleteTurno(patient.sessionId)} disabled={saving} style={{
                                     background: 'rgba(255,82,82,0.1)', border: '1px solid #ff5252', color: '#ff5252',
                                     padding: '8px 14px', borderRadius: '8px', cursor: saving ? 'not-allowed' : 'pointer',
-                                    fontWeight: '600', fontSize: '0.85rem'
+                                    fontWeight: '600', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '5px'
                                 }} title="Eliminar este turno">
-                                    🗑️ Cancelar Turno
+                                    🗑️ Eliminar Turno
                                 </button>
                             )}
                             <button onClick={onClose} style={{
@@ -390,22 +392,54 @@ const warnStyle = { fontSize: '0.73rem', color: '#ffea00', marginTop: '5px' };
 const UpcomingAppointmentsModal = ({ onClose }) => {
     const [upcoming, setUpcoming] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
     const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
     const [selectedDay, setSelectedDay] = useState(null);
 
-    useEffect(() => {
+    const [sessionCounts, setSessionCounts] = useState({});
+
+    const fetchSessions = () => {
+        setLoading(true);
         axios.get(`${API_URL}/sessions`)
             .then(res => {
+                const all = Array.isArray(res.data) ? res.data : [];
                 const now = new Date();
                 const today = startOfDay(now);
-                const list = (Array.isArray(res.data) ? res.data : [])
+                const list = all
                     .filter(s => s.estado === 'programado' && new Date(s.fecha + 'T00:00:00') >= today)
                     .sort((a,b) => new Date(a.fecha + 'T' + a.hora) - new Date(b.fecha + 'T' + b.hora));
                 setUpcoming(list);
+                // Contar sesiones completadas por paciente
+                const counts = {};
+                all.forEach(s => {
+                    if (s.estado === 'asistió' && s.paciente_id) {
+                        counts[String(s.paciente_id)] = (counts[String(s.paciente_id)] || 0) + 1;
+                    }
+                });
+                setSessionCounts(counts);
             })
             .catch(() => setUpcoming([]))
             .finally(() => setLoading(false));
+    };
+
+    useEffect(() => {
+        fetchSessions();
     }, []);
+
+    const handleDeleteTurno = async (sessionId) => {
+        if (!window.confirm(`¿Estás seguro que querés ELIMINAR este turno? Esta acción no se puede deshacer.`)) return;
+        setSaving(true);
+        try {
+            await axios.delete(`${API_URL}/sessions/${sessionId}`);
+            fetchSessions();
+        } catch (err) {
+            console.error('Error eliminando turno:', err);
+            const msg = err.response?.data?.error || err.message || 'Error desconocido';
+            alert(`Error al eliminar turno: ${msg}`);
+        } finally {
+            setSaving(false);
+        }
+    };
 
     // Funciones del calendario
     const monthStart = startOfMonth(currentMonth);
@@ -453,13 +487,24 @@ const UpcomingAppointmentsModal = ({ onClose }) => {
                 alignItems: 'center',
                 transition: 'background 0.15s',
             }}>
-                <span style={{ fontWeight: '700', fontSize: '0.9rem' }}>
+                <span style={{ fontWeight: '700', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     👤 {s.nombre} {s.apellido}
+                    <span style={{ fontSize: '0.75rem', fontWeight: '700', background: 'rgba(0,136,204,0.25)', color: 'var(--primary)', padding: '1px 7px', borderRadius: '10px', border: '1px solid rgba(0,136,204,0.4)' }}>
+                        {sessionCounts[String(s.paciente_id)] ?? 0}
+                    </span>
                 </span>
-                <span style={{
-                    color: 'var(--primary)', fontWeight: '700', fontSize: '0.85rem',
-                    background: 'rgba(0,136,204,0.15)', padding: '3px 10px', borderRadius: '20px'
-                }}>🕐 {s.hora}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{
+                        color: 'var(--primary)', fontWeight: '700', fontSize: '0.85rem',
+                        background: 'rgba(0,136,204,0.15)', padding: '3px 10px', borderRadius: '20px'
+                    }}>🕐 {s.hora}</span>
+                    <button onClick={() => handleDeleteTurno(s.id)} style={{
+                        background: 'rgba(255,82,82,0.1)', border: 'none', color: '#ff5252',
+                        padding: '6px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }} title="Borrar Turno">
+                        <Trash2 size={16} />
+                    </button>
+                </div>
             </div>
         );
 
@@ -468,7 +513,7 @@ const UpcomingAppointmentsModal = ({ onClose }) => {
                 {/* Mañana */}
                 <div style={{ marginBottom: '6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '8px' }}>
                     <h4 style={{ color: '#ffb74d', fontSize: '0.95rem', margin: 0 }}>☀️ Mañana</h4>
-                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', background: 'rgba(255,183,77,0.1)', border: '1px solid rgba(255,183,77,0.3)', padding: '2px 8px', borderRadius: '10px' }}>{morning.length} / 15</span>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', background: 'rgba(255,183,77,0.1)', border: '1px solid rgba(255,183,77,0.3)', padding: '2px 8px', borderRadius: '10px' }}>{morning.length} pacientes</span>
                 </div>
                 {morning.length === 0
                     ? <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '20px', fontStyle: 'italic' }}>Sin turnos</p>
@@ -478,7 +523,7 @@ const UpcomingAppointmentsModal = ({ onClose }) => {
                 {/* Tarde */}
                 <div style={{ marginTop: '18px', marginBottom: '6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '8px' }}>
                     <h4 style={{ color: '#90caf9', fontSize: '0.95rem', margin: 0 }}>🌙 Tarde</h4>
-                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', background: 'rgba(144,202,249,0.1)', border: '1px solid rgba(144,202,249,0.3)', padding: '2px 8px', borderRadius: '10px' }}>{afternoon.length} / 15</span>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', background: 'rgba(144,202,249,0.1)', border: '1px solid rgba(144,202,249,0.3)', padding: '2px 8px', borderRadius: '10px' }}>{afternoon.length} pacientes</span>
                 </div>
                 {afternoon.length === 0
                     ? <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Sin turnos</p>
@@ -589,27 +634,35 @@ const AgendaCalendar = () => {
             ]);
             const dateStr = format(currentDate, 'yyyy-MM-dd');
             const validSlots = new Set(['08:00','08:45','09:30','10:15','11:00','11:45','12:30','13:15','14:00','14:45','15:30','16:15','17:00','17:45']);
-            
+
+            const allSessions = Array.isArray(resSessions.data) ? resSessions.data : [];
+
+            // Contar sesiones completadas ('asistió') por paciente
+            const sessionCounts = {};
+            allSessions.forEach(s => {
+                if (s.estado === 'asistió' && s.paciente_id) {
+                    sessionCounts[String(s.paciente_id)] = (sessionCounts[String(s.paciente_id)] || 0) + 1;
+                }
+            });
+
             // Incluir todos los estados (programado, asistió, no asistió) para que no desaparezcan al atenderlos
-            const daySessions = (Array.isArray(resSessions.data) ? resSessions.data : []).filter(s =>
+            const daySessions = allSessions.filter(s =>
                 s.fecha === dateStr && s.paciente_id && (s.estado === 'programado' || s.estado === 'asistió' || s.estado === 'no asistió')
             );
-            
+
             const newApt = {};
             daySessions.forEach(session => {
                 const horaFull = session.hora || '08:00';
                 const hora = horaFull.substring(0, 5);
-                if (!validSlots.has(hora)) return; 
+                if (!validSlots.has(hora)) return;
                 const patient = (Array.isArray(resPatients.data) ? resPatients.data : []).find(p => String(p.id) === String(session.paciente_id));
-                if (!patient) return; 
-                
-                // Buscar el siguiente slot libre (hasta 15 pacientes por turno)
+                if (!patient) return;
+
+                // Buscar el siguiente slot libre (sin restricción de cupo)
                 let count = 0;
                 while (newApt[`${hora}-${count}`]) { count++; }
-                
-                if (count < 15) {
-                    newApt[`${hora}-${count}`] = { ...patient, sessionId: session.id, hora, estado: session.estado };
-                }
+
+                newApt[`${hora}-${count}`] = { ...patient, sessionId: session.id, hora, estado: session.estado, sessionCount: sessionCounts[String(patient.id)] || 0 };
             });
             setAppointments(newApt);
         } catch (err) {
@@ -633,8 +686,10 @@ const AgendaCalendar = () => {
 
     const getSlotPatients = (hora) => {
         const list = [];
-        for (let i = 0; i < 15; i++) {
-            if (appointments[`${hora}-${i}`]) list.push(appointments[`${hora}-${i}`]);
+        let i = 0;
+        while (appointments[`${hora}-${i}`]) {
+            list.push(appointments[`${hora}-${i}`]);
+            i++;
         }
         return list;
     };
@@ -708,6 +763,9 @@ const AgendaCalendar = () => {
                                                 }}>
                                                 {isAttended ? '✅ ' : isMissed ? '❌ ' : '👤 '}
                                                 {p.nombre} {p.apellido}
+                                                <span style={{ marginLeft: '6px', fontSize: '0.78rem', fontWeight: '700', background: 'rgba(255,255,255,0.15)', padding: '1px 7px', borderRadius: '10px' }}>
+                                                    {p.sessionCount ?? 0}
+                                                </span>
                                             </button>
                                         );
                                     })}

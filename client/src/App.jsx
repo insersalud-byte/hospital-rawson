@@ -15,28 +15,11 @@ import './styles/Global.css';
 const API_URL = import.meta.env.MODE === 'development' ? 'http://localhost:3005/api' : '/api';
 
 // ─── Dashboard Admin ──────────────────────────────────────────────────────────
-const SLOTS_MANANA = ['08:00', '08:45', '09:30', '10:15', '11:00', '11:45'];
-const SLOTS_TARDE  = ['14:00', '14:45', '15:30', '16:15', '17:00', '17:45'];
-
-const calcFreeSlots = (daySessions) => {
-    let manana = 0, tarde = 0;
-    SLOTS_MANANA.forEach(slot => {
-        const used = daySessions.filter(s => (s.hora || '').substring(0, 5) === slot).length;
-        manana += Math.max(0, 2 - used);
-    });
-    SLOTS_TARDE.forEach(slot => {
-        const used = daySessions.filter(s => (s.hora || '').substring(0, 5) === slot).length;
-        tarde += Math.max(0, 2 - used);
-    });
-    return { manana, tarde };
-};
-
 const Dashboard = () => {
     const [loading, setLoading] = useState(true);
     const [sesionesHoy, setSesionesHoy] = useState(0);
-    const [libresManana, setLibresManana] = useState(0);
-    const [libresTarde, setLibresTarde] = useState(0);
-    const [proxDia, setProxDia] = useState(null);
+    const [sesionesManana, setSesionesManana] = useState(0);
+    const [sesionesTarde, setSesionesTarde] = useState(0);
     const [patients, setPatients] = useState([]);
     const [sessions, setSessions] = useState([]);
 
@@ -58,25 +41,16 @@ const Dashboard = () => {
             const todaySess = allSessions.filter(s => s.fecha === todayStr && s.estado === 'programado');
             setSesionesHoy(todaySess.length);
 
-            const { manana, tarde } = calcFreeSlots(todaySess);
-            setLibresManana(manana);
-            setLibresTarde(tarde);
-
-            if (manana + tarde === 0) {
-                let found = null;
-                for (let i = 1; i <= 14; i++) {
-                    const d = new Date();
-                    d.setDate(d.getDate() + i);
-                    if (d.getDay() === 0) continue; // skip Sunday
-                    const dStr = d.toISOString().split('T')[0];
-                    const dSess = allSessions.filter(s => s.fecha === dStr && s.estado === 'programado');
-                    const { manana: m, tarde: t } = calcFreeSlots(dSess);
-                    if (m + t > 0) { found = { fecha: d, manana: m, tarde: t }; break; }
-                }
-                setProxDia(found);
-            } else {
-                setProxDia(null);
-            }
+            const manana = todaySess.filter(s => {
+                const h = (s.hora || '').substring(0, 5);
+                return h >= '08:00' && h < '13:00';
+            }).length;
+            const tarde = todaySess.filter(s => {
+                const h = (s.hora || '').substring(0, 5);
+                return h >= '13:00';
+            }).length;
+            setSesionesManana(manana);
+            setSesionesTarde(tarde);
         } catch (err) {
             console.error('Dashboard error:', err);
         } finally {
@@ -87,7 +61,6 @@ const Dashboard = () => {
     const deletablePatients = patients.filter(p =>
         !sessions.some(s => String(s.paciente_id) === String(p.id) && s.estado === 'asistió')
     );
-    const totalLibresHoy = libresManana + libresTarde;
 
     if (loading) return <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>⏳ Cargando panel...</div>;
 
@@ -106,44 +79,22 @@ const Dashboard = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                     <StatCard title="Sesiones Hoy" value={sesionesHoy} color="var(--primary)" />
                     <StatCard title="Total Pacientes" value={patients.length} color="var(--success)" />
-                    <StatCard title="Cupos Libres Hoy" value={totalLibresHoy} color={totalLibresHoy > 0 ? 'var(--accent)' : '#ff5252'} />
+                    <StatCard title="Turnos Mañana" value={sesionesManana} color="var(--accent)" />
                     <StatCard title="Sin Atender" value={deletablePatients.length} color="var(--warning)" />
                 </div>
             </div>
 
-            {/* Fila 2: Cupos mañana / tarde / próximo día */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '18px' }}>
-                <div className="premium-card glass-panel" style={{ textAlign: 'center', borderTop: `4px solid ${libresManana > 0 ? '#00e5ff' : '#ff5252'}` }}>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.73rem', fontWeight: '700', letterSpacing: '0.5px', marginBottom: '10px' }}>☀️ CUPOS MAÑANA — HOY</p>
-                    <p style={{ fontSize: '2.6rem', fontWeight: '800', color: libresManana > 0 ? '#00e5ff' : '#ff5252', lineHeight: 1 }}>{libresManana}</p>
+            {/* Fila 2: Mañana / tarde */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '18px' }}>
+                <div className="premium-card glass-panel" style={{ textAlign: 'center', borderTop: '4px solid #00e5ff' }}>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.73rem', fontWeight: '700', letterSpacing: '0.5px', marginBottom: '10px' }}>☀️ TURNOS MAÑANA — HOY</p>
+                    <p style={{ fontSize: '2.6rem', fontWeight: '800', color: '#00e5ff', lineHeight: 1 }}>{sesionesManana}</p>
                     <p style={{ fontSize: '0.73rem', color: 'var(--text-muted)', marginTop: '6px' }}>08:00 – 12:45 hs</p>
                 </div>
-                <div className="premium-card glass-panel" style={{ textAlign: 'center', borderTop: `4px solid ${libresTarde > 0 ? '#00e5ff' : '#ff5252'}` }}>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.73rem', fontWeight: '700', letterSpacing: '0.5px', marginBottom: '10px' }}>🌙 CUPOS TARDE — HOY</p>
-                    <p style={{ fontSize: '2.6rem', fontWeight: '800', color: libresTarde > 0 ? '#00e5ff' : '#ff5252', lineHeight: 1 }}>{libresTarde}</p>
-                    <p style={{ fontSize: '0.73rem', color: 'var(--text-muted)', marginTop: '6px' }}>14:00 – 17:45 hs</p>
-                </div>
-                <div className="premium-card glass-panel" style={{ textAlign: 'center', borderTop: '4px solid var(--primary)' }}>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.73rem', fontWeight: '700', letterSpacing: '0.5px', marginBottom: '10px' }}>📅 PRÓXIMO DÍA DISPONIBLE</p>
-                    {totalLibresHoy > 0 ? (
-                        <>
-                            <p style={{ fontSize: '1.1rem', fontWeight: '800', color: '#00e676' }}>HOY</p>
-                            <p style={{ fontSize: '0.73rem', color: 'var(--text-muted)', marginTop: '6px' }}>Hay cupos disponibles hoy</p>
-                        </>
-                    ) : proxDia ? (
-                        <>
-                            <p style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--primary)', textTransform: 'capitalize' }}>
-                                {format(proxDia.fecha, "EEEE d/MM", { locale: es })}
-                            </p>
-                            <p style={{ fontSize: '0.73rem', color: 'var(--text-muted)', marginTop: '6px' }}>
-                                {proxDia.manana > 0 ? `☀️ ${proxDia.manana} mañana` : ''}
-                                {proxDia.manana > 0 && proxDia.tarde > 0 ? ' · ' : ''}
-                                {proxDia.tarde > 0 ? `🌙 ${proxDia.tarde} tarde` : ''}
-                            </p>
-                        </>
-                    ) : (
-                        <p style={{ fontSize: '0.88rem', fontWeight: '700', color: '#ff5252', marginTop: '6px' }}>Sin cupos en 14 días</p>
-                    )}
+                <div className="premium-card glass-panel" style={{ textAlign: 'center', borderTop: '4px solid #7c4dff' }}>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.73rem', fontWeight: '700', letterSpacing: '0.5px', marginBottom: '10px' }}>🌙 TURNOS TARDE — HOY</p>
+                    <p style={{ fontSize: '2.6rem', fontWeight: '800', color: '#7c4dff', lineHeight: 1 }}>{sesionesTarde}</p>
+                    <p style={{ fontSize: '0.73rem', color: 'var(--text-muted)', marginTop: '6px' }}>13:00 – 17:45 hs</p>
                 </div>
             </div>
 

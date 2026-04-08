@@ -2,7 +2,7 @@ const { supabase, parseId } = require('./_supabase');
 
 module.exports = async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, DELETE');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     if (req.method === 'OPTIONS') return res.status(200).end();
 
@@ -30,6 +30,15 @@ module.exports = async (req, res) => {
                 .select('*, paciente:rawson_pacientes(nombre, apellido)');
             if (error) throw error;
             return res.json(data.map(s => ({ ...s, nombre: s.paciente?.nombre, apellido: s.paciente?.apellido })));
+        }
+
+        // DELETE /api/sessions/:id
+        if (req.method === 'DELETE' && parts[0]) {
+            const sessionId = parseId(parts[0]);
+            if (!sessionId) return res.status(400).json({ error: 'ID requerido' });
+            const { error } = await supabase.from('rawson_sesiones').delete().eq('id', sessionId);
+            if (error) throw error;
+            return res.json({ success: true });
         }
 
         if (req.method === 'POST') {

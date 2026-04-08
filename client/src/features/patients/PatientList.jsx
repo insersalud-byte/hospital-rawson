@@ -12,11 +12,9 @@ const API_URL = import.meta.env.MODE === 'development' ? 'http://localhost:3005/
 
 const horariosSlotsList = [
     '08:00', '08:45', '09:30', '10:15', '11:00', '11:45',
+    '12:30', '13:15',
     '14:00', '14:45', '15:30', '16:15', '17:00', '17:45'
 ];
-
-const MORNING_SLOTS = new Set(['08:00', '08:45', '09:30', '10:15', '11:00', '11:45']);
-const MAX_TURNOS_MANANA = 15;
 
 // ─── Historial del Paciente (Componente Expansible) ───────────────────────────
 const PatientHistory = ({ patient }) => {
@@ -110,8 +108,10 @@ const PatientHistory = ({ patient }) => {
 };
 
 // ─── Mini Calendario Multi-Selección ─────────────────────────────────────────
-// selectedDates: Array de Date
-const MultiDateCalendar = ({ selectedDates, onToggleDate }) => {
+// existingSessionsByDate: { 'yyyy-MM-dd': [{ id, hora, ... }] }  — sesiones ya programadas
+// toSuspendIds: Set<string>                                        — IDs marcados para suspender
+// onToggleSuspendDate: (fechaStr) => void
+const MultiDateCalendar = ({ selectedDates, onToggleDate, existingSessionsByDate = {}, toSuspendIds = new Set(), onToggleSuspendDate }) => {
     const [viewMonth, setViewMonth] = useState(new Date());
     const today = startOfDay(new Date());
 
@@ -122,6 +122,7 @@ const MultiDateCalendar = ({ selectedDates, onToggleDate }) => {
 
     const firstDayOfWeek = (getDay(startOfMonth(viewMonth)) + 6) % 7; // Lun=0
     const dayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+    const hasExisting = Object.keys(existingSessionsByDate).length > 0;
 
     return (
         <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: '14px', padding: '16px', border: '1px solid var(--border)' }}>
@@ -153,42 +154,92 @@ const MultiDateCalendar = ({ selectedDates, onToggleDate }) => {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '3px' }}>
                 {Array.from({ length: firstDayOfWeek }).map((_, i) => <div key={`empty-${i}`} />)}
                 {daysInMonth.map(day => {
+                    const fechaStr = format(day, 'yyyy-MM-dd');
+                    const sessions = existingSessionsByDate[fechaStr] || [];
+                    const hasSessions = sessions.length > 0;
+                    const allSuspended = hasSessions && sessions.every(s => toSuspendIds.has(String(s.id)));
                     const isSelected = selectedDates.some(d => isSameDay(d, day));
                     const isPast = isBefore(day, today);
                     const isToday = isSameDay(day, today);
+                    const isClickable = hasSessions || !isPast;
+
+                    let bg;
+                    if (hasSessions && allSuspended) {
+                        bg = 'linear-gradient(135deg, #ff6b35, #cc4400)';
+                    } else if (hasSessions) {
+                        bg = 'linear-gradient(135deg, var(--primary), #0055aa)';
+                    } else if (isSelected) {
+                        bg = 'linear-gradient(135deg, #00e676, #00b248)';
+                    } else {
+                        bg = isPast ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.04)';
+                    }
+
+                    const handleClick = () => {
+                        if (hasSessions && onToggleSuspendDate) {
+                            onToggleSuspendDate(fechaStr);
+                        } else if (!isPast) {
+                            onToggleDate(day);
+                        }
+                    };
 
                     return (
                         <button
                             type="button"
                             key={day.toISOString()}
-                            onClick={() => !isPast && onToggleDate(day)}
-                            disabled={isPast}
+                            onClick={handleClick}
+                            disabled={!isClickable}
                             style={{
-                                padding: '7px 3px', borderRadius: '8px', textAlign: 'center',
-                                fontSize: '0.82rem', fontWeight: isSelected ? '700' : '400',
-                                border: isToday ? '2px solid var(--primary)' : 'none',
-                                cursor: isPast ? 'not-allowed' : 'pointer',
-                                opacity: isPast ? 0.3 : 1,
-                                background: isSelected
-                                    ? 'linear-gradient(135deg, var(--primary), #0055aa)'
-                                    : 'rgba(255,255,255,0.04)',
-                                color: isSelected ? 'white' : isPast ? 'var(--text-muted)' : 'white',
-                                transition: 'all 0.15s'
+                                padding: '7px 3px 5px', borderRadius: '8px', textAlign: 'center',
+                                fontSize: '0.82rem', fontWeight: (hasSessions || isSelected) ? '700' : '400',
+                                border: isToday ? '2px solid #ffea00' : 'none',
+                                cursor: isClickable ? 'pointer' : 'not-allowed',
+                                opacity: isPast && !hasSessions ? 0.3 : 1,
+                                background: bg,
+                                color: 'white',
+                                transition: 'all 0.15s',
+                                position: 'relative',
+                                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px'
                             }}>
                             {format(day, 'd')}
+                            {hasSessions && (
+                                <div style={{
+                                    width: '4px', height: '4px', borderRadius: '50%',
+                                    background: allSuspended ? '#ffea00' : 'rgba(255,255,255,0.85)'
+                                }} />
+                            )}
                         </button>
                     );
                 })}
             </div>
 
-            {/* Resumen de días seleccionados */}
-            {selectedDates.length > 0 && (
+            {/* Leyenda cuando hay sesiones existentes */}
+            {hasExisting && (
+                <div style={{ marginTop: '10px', display: 'flex', gap: '14px', flexWrap: 'wrap', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span style={{ width: '10px', height: '10px', borderRadius: '3px', background: 'var(--primary)', display: 'inline-block' }} /> Turno programado
+                    </span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span style={{ width: '10px', height: '10px', borderRadius: '3px', background: '#ff6b35', display: 'inline-block' }} /> Para suspender
+                    </span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span style={{ width: '10px', height: '10px', borderRadius: '3px', background: '#00e676', display: 'inline-block' }} /> Nuevo turno
+                    </span>
+                </div>
+            )}
+
+            {/* Resumen de días seleccionados y a suspender */}
+            {(selectedDates.length > 0 || toSuspendIds.size > 0) && (
                 <div style={{ marginTop: '12px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                     {[...selectedDates].sort((a, b) => a - b).map(d => (
-                        <span key={d.toISOString()} style={{ padding: '4px 10px', background: 'rgba(0,136,204,0.15)', border: '1px solid var(--primary)', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '600', textTransform: 'capitalize' }}>
+                        <span key={d.toISOString()} style={{ padding: '4px 10px', background: 'rgba(0,230,118,0.15)', border: '1px solid #00e676', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '600', textTransform: 'capitalize' }}>
                             📅 {format(d, "EEE d/MM", { locale: es })}
                         </span>
                     ))}
+                    {toSuspendIds.size > 0 && (
+                        <span style={{ padding: '4px 10px', background: 'rgba(255,107,53,0.15)', border: '1px solid #ff6b35', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '600' }}>
+                            ⚠️ {toSuspendIds.size} sesión{toSuspendIds.size !== 1 ? 'es' : ''} a suspender
+                        </span>
+                    )}
                 </div>
             )}
         </div>
@@ -338,13 +389,21 @@ const PatientList = () => {
                 ))}
             </div>
 
-            {showForm && <PatientForm onClose={() => { setShowForm(false); setPatientToEdit(null); }} onSave={fetchPatients} patientToEdit={patientToEdit} />}
+            {showForm && (
+                <PatientForm 
+                    onClose={() => { setShowForm(false); setPatientToEdit(null); }} 
+                    onSave={fetchPatients} 
+                    patientToEdit={patientToEdit} 
+                    existingDoctors={[...new Set(patients.map(p => p.medico_derivante_nombre).filter(Boolean))]}
+                    existingInstitutions={[...new Set(patients.map(p => p.medico_derivante_institucion).filter(Boolean))]}
+                />
+            )}
         </div>
     );
 };
 
 // ─── Formulario Nuevo Paciente ────────────────────────────────────────────────
-const PatientForm = ({ onClose, onSave, patientToEdit }) => {
+const PatientForm = ({ onClose, onSave, patientToEdit, existingDoctors = [], existingInstitutions = [] }) => {
     const [formData, setFormData] = useState({
         nombre: patientToEdit?.nombre || '', apellido: patientToEdit?.apellido || '',
         historia_clinica: patientToEdit?.historia_clinica || '', telefono: patientToEdit?.telefono || '',
@@ -358,12 +417,49 @@ const PatientForm = ({ onClose, onSave, patientToEdit }) => {
     const [saving, setSaving] = useState(false);
     const [savedOk, setSavedOk] = useState(false);
     const [waLink, setWaLink] = useState(null);
+    const [existingSessions, setExistingSessions] = useState([]); // sesiones futuras programadas
+    const [toSuspend, setToSuspend] = useState(new Set()); // IDs (string) de sesiones a suspender
 
     useEffect(() => {
         axios.get(`${API_URL}/pathologies`)
             .then(res => setPathologies(res.data || []))
             .catch(() => { });
     }, []);
+
+    // Cargar sesiones futuras cuando editamos un paciente
+    useEffect(() => {
+        if (!patientToEdit) return;
+        const todayStr = format(new Date(), 'yyyy-MM-dd');
+        axios.get(`${API_URL}/sessions/patient/${patientToEdit.id}`)
+            .then(res => {
+                const future = (Array.isArray(res.data) ? res.data : [])
+                    .filter(s => s.estado === 'programado' && s.fecha >= todayStr);
+                setExistingSessions(future);
+            })
+            .catch(() => setExistingSessions([]));
+    }, [patientToEdit?.id]);
+
+    // Mapa fecha → array de sesiones existentes
+    const existingSessionsByDate = {};
+    existingSessions.forEach(s => {
+        if (!existingSessionsByDate[s.fecha]) existingSessionsByDate[s.fecha] = [];
+        existingSessionsByDate[s.fecha].push(s);
+    });
+
+    const toggleSuspendDate = (fechaStr) => {
+        const sessions = existingSessionsByDate[fechaStr] || [];
+        const ids = sessions.map(s => String(s.id));
+        const allMarked = ids.every(id => toSuspend.has(id));
+        setToSuspend(prev => {
+            const next = new Set(prev);
+            if (allMarked) {
+                ids.forEach(id => next.delete(id));
+            } else {
+                ids.forEach(id => next.add(id));
+            }
+            return next;
+        });
+    };
 
     const toggleDate = (day) => {
         setSelectedDates(prev => {
@@ -383,33 +479,7 @@ const PatientForm = ({ onClose, onSave, patientToEdit }) => {
             return;
         }
 
-        // Validar cupo de turno mañana (máximo 15 pacientes)
-        if (selectedDates.length > 0 && MORNING_SLOTS.has(horaTurno)) {
-            try {
-                const resSessions = await axios.get(`${API_URL}/sessions`);
-                const allSessions = Array.isArray(resSessions.data) ? resSessions.data : [];
-                const diasSinCupo = [];
-                for (const day of selectedDates) {
-                    const dateStr = format(day, 'yyyy-MM-dd');
-                    const sesionesManana = allSessions.filter(s =>
-                        s.fecha === dateStr &&
-                        MORNING_SLOTS.has((s.hora || '').substring(0, 5))
-                    );
-                    if (sesionesManana.length >= MAX_TURNOS_MANANA) {
-                        diasSinCupo.push(format(day, "EEEE d/MM", { locale: es }));
-                    }
-                }
-                if (diasSinCupo.length > 0) {
-                    alert(
-                        `No se puede agregar el turno de mañana. El cupo máximo de ${MAX_TURNOS_MANANA} pacientes ya fue alcanzado en:\n\n` +
-                        diasSinCupo.map(d => `• ${d}`).join('\n')
-                    );
-                    return;
-                }
-            } catch (err) {
-                console.warn('No se pudo verificar el cupo de mañana:', err);
-            }
-        }
+
 
         setSaving(true);
         try {
@@ -429,6 +499,14 @@ const PatientForm = ({ onClose, onSave, patientToEdit }) => {
                 sesionesNuevas = sesiones.length;
             }
 
+            // Suspender sesiones marcadas
+            const suspendidas = toSuspend.size;
+            if (suspendidas > 0) {
+                await Promise.all([...toSuspend].map(id =>
+                    axios.post(`${API_URL}/sessions`, { _action: 'update', id, estado: 'suspendido' })
+                ));
+            }
+
             if (formData.whatsapp && (!isEditing || sesionesNuevas > 0)) {
                 const num = formData.whatsapp.replace(/\D/g, '');
                 if (sesionesNuevas > 0) {
@@ -440,10 +518,10 @@ const PatientForm = ({ onClose, onSave, patientToEdit }) => {
                 }
             }
 
-            if (!isEditing || sesionesNuevas > 0) {
+            if (!isEditing || sesionesNuevas > 0 || suspendidas > 0) {
                 setSavedOk(true);
             } else {
-                // Solo edición de datos
+                // Solo edición de datos sin cambios en sesiones
                 onSave();
                 onClose();
             }
@@ -456,10 +534,14 @@ const PatientForm = ({ onClose, onSave, patientToEdit }) => {
         }
     };
 
-    const field = (key, placeholder, type = 'text') => (
-        <input type={type} placeholder={placeholder} value={formData[key]}
+    const field = (key, placeholder, type = 'text', listId = null) => (
+        <input 
+            type={type} 
+            placeholder={placeholder} 
+            value={formData[key]}
             onChange={e => setFormData({ ...formData, [key]: e.target.value })}
             style={{ width: '100%', boxSizing: 'border-box' }}
+            list={listId}
         />
     );
 
@@ -480,14 +562,22 @@ const PatientForm = ({ onClose, onSave, patientToEdit }) => {
                     // ── Pantalla de éxito ──
                     <div style={{ textAlign: 'center', padding: '20px' }}>
                         <div style={{ fontSize: '4rem', marginBottom: '15px' }}>✅</div>
-                        <h2 style={{ fontSize: '1.5rem', color: '#00e676', marginBottom: '8px' }}>Paciente registrado</h2>
+                        <h2 style={{ fontSize: '1.5rem', color: '#00e676', marginBottom: '8px' }}>
+                            {patientToEdit ? 'Cambios guardados' : 'Paciente registrado'}
+                        </h2>
                         <p style={{ color: 'var(--text-muted)', marginBottom: '6px' }}>
-                            <strong>{formData.nombre} {formData.apellido}</strong> — {selectedDates.length} sesión{selectedDates.length !== 1 ? 'es' : ''} programada{selectedDates.length !== 1 ? 's' : ''}
+                            <strong>{formData.nombre} {formData.apellido}</strong>
+                            {selectedDates.length > 0 && ` — ${selectedDates.length} sesión${selectedDates.length !== 1 ? 'es' : ''} nueva${selectedDates.length !== 1 ? 's' : ''}`}
                         </p>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', margin: '15px 0 20px', fontSize: '0.88rem', color: 'var(--text-muted)' }}>
                             {selectedDates.map((d, i) => (
                                 <span key={i}>📅 {format(d, "EEEE d/MM/yyyy", { locale: es })} — {horaTurno} hs</span>
                             ))}
+                            {toSuspend.size > 0 && (
+                                <span style={{ color: '#ff6b35', fontWeight: '700' }}>
+                                    ⚠️ {toSuspend.size} sesión{toSuspend.size !== 1 ? 'es' : ''} suspendida{toSuspend.size !== 1 ? 's' : ''}
+                                </span>
+                            )}
                         </div>
 
                         <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -544,11 +634,17 @@ const PatientForm = ({ onClose, onSave, patientToEdit }) => {
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '18px' }}>
                                 <div>
                                     <label style={labelStyle}>MÉDICO DERIVANTE</label>
-                                    {field('medico_derivante_nombre', 'Nombre del médico')}
+                                    {field('medico_derivante_nombre', 'Nombre del médico', 'text', 'doctors-list')}
+                                    <datalist id="doctors-list">
+                                        {existingDoctors.map((doc, idx) => <option key={idx} value={doc} />)}
+                                    </datalist>
                                 </div>
                                 <div>
                                     <label style={labelStyle}>INSTITUCIÓN</label>
-                                    {field('medico_derivante_institucion', 'Hospital / Centro')}
+                                    {field('medico_derivante_institucion', 'Hospital / Centro', 'text', 'institutions-list')}
+                                    <datalist id="institutions-list">
+                                        {existingInstitutions.map((inst, idx) => <option key={idx} value={inst} />)}
+                                    </datalist>
                                 </div>
                             </div>
 
@@ -558,7 +654,13 @@ const PatientForm = ({ onClose, onSave, patientToEdit }) => {
                                     <Calendar size={17} /> SELECCIONAR DÍAS DE SESIÓN
                                 </h4>
 
-                                <MultiDateCalendar selectedDates={selectedDates} onToggleDate={toggleDate} />
+                                <MultiDateCalendar
+                                    selectedDates={selectedDates}
+                                    onToggleDate={toggleDate}
+                                    existingSessionsByDate={existingSessionsByDate}
+                                    toSuspendIds={toSuspend}
+                                    onToggleSuspendDate={toggleSuspendDate}
+                                />
 
                                 {/* Selector de hora único para todos los días */}
                                 <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '12px', background: 'rgba(0,0,0,0.25)', borderRadius: '10px', padding: '12px 16px', border: '1px solid var(--primary)' }}>
@@ -577,7 +679,10 @@ const PatientForm = ({ onClose, onSave, patientToEdit }) => {
                             <div style={{ display: 'flex', gap: '10px' }}>
                                 <button type="submit" disabled={saving} className="vibrant-gradient"
                                     style={{ flex: 1, padding: '15px', borderRadius: '12px', fontWeight: '700', border: 'none', cursor: saving ? 'not-allowed' : 'pointer', color: 'white', opacity: saving ? 0.7 : 1 }}>
-                                    {saving ? '⏳ Guardando...' : `✅ GUARDAR Y AGENDAR${selectedDates.length > 0 ? ` (${selectedDates.length} sesión${selectedDates.length !== 1 ? 'es' : ''})` : ''}`}
+                                    {saving ? '⏳ Guardando...' :
+                                        toSuspend.size > 0
+                                            ? `✅ GUARDAR${selectedDates.length > 0 ? ` · +${selectedDates.length} nueva${selectedDates.length !== 1 ? 's' : ''}` : ''} · ⚠️ Suspender ${toSuspend.size}`
+                                            : `✅ GUARDAR Y AGENDAR${selectedDates.length > 0 ? ` (${selectedDates.length} sesión${selectedDates.length !== 1 ? 'es' : ''})` : ''}`}
                                 </button>
                                 <button type="button" onClick={onClose}
                                     style={{ padding: '15px 22px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', cursor: 'pointer' }}>

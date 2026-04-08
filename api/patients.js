@@ -2,17 +2,41 @@ const { supabase, parseId } = require('./_supabase');
 
 module.exports = async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, DELETE');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     if (req.method === 'OPTIONS') return res.status(200).end();
 
     try {
         if (!supabase) throw new Error('Supabase client not initialized.');
 
+        const url = new URL(req.url, `http://${req.headers.host}`);
+        const parts = url.pathname.replace('/api/patients', '').split('/').filter(Boolean);
+
         if (req.method === 'GET') {
             const { data, error } = await supabase.from('rawson_pacientes').select('*').order('apellido');
             if (error) throw error;
             return res.json(data);
+        }
+
+        if (req.method === 'DELETE' && parts[0]) {
+            const patId = parseId(parts[0]);
+            if (!patId) return res.status(400).json({ error: 'ID requerido' });
+
+            const { data: attended, error: errCheck } = await supabase
+                .from('rawson_sesiones')
+                .select('id')
+                .eq('paciente_id', patId)
+                .eq('estado', 'asistió')
+                .limit(1);
+            if (errCheck) throw errCheck;
+            if (attended && attended.length > 0)
+                return res.status(400).json({ error: 'No se puede eliminar: el paciente ya tiene sesiones marcadas como "asistió". Por seguridad no se permiten borrar pacientes con historial activo.' });
+
+            const { error: errSes } = await supabase.from('rawson_sesiones').delete().eq('paciente_id', patId);
+            if (errSes) throw errSes;
+            const { error } = await supabase.from('rawson_pacientes').delete().eq('id', patId);
+            if (error) throw error;
+            return res.json({ success: true });
         }
 
         if (req.method === 'POST') {
