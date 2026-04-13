@@ -107,6 +107,22 @@ const PatientHistory = ({ patient }) => {
     );
 };
 
+// ─── Feriados y asuetos (MM-DD recurrentes) ───────────────────────────────────
+const FERIADOS_FIJOS = [
+    '01-01', // Año Nuevo
+    '03-24', // Día de la Memoria
+    '04-02', // Veteranos de Malvinas
+    '05-01', // Día del Trabajo
+    '05-24', // Asueto
+    '05-25', // Revolución de Mayo
+    '06-20', // Día de la Bandera
+    '07-09', // Independencia
+    '10-12', // Diversidad Cultural
+    '11-20', // Soberanía Nacional
+    '12-08', // Inmaculada Concepción
+    '12-25', // Navidad
+];
+
 // ─── Mini Calendario Multi-Selección ─────────────────────────────────────────
 // existingSessionsByDate: { 'yyyy-MM-dd': [{ id, hora, ... }] }  — sesiones ya programadas
 // toSuspendIds: Set<string>                                        — IDs marcados para suspender
@@ -155,13 +171,18 @@ const MultiDateCalendar = ({ selectedDates, onToggleDate, existingSessionsByDate
                 {Array.from({ length: firstDayOfWeek }).map((_, i) => <div key={`empty-${i}`} />)}
                 {daysInMonth.map(day => {
                     const fechaStr = format(day, 'yyyy-MM-dd');
+                    const fechaMD = format(day, 'MM-dd');
                     const sessions = existingSessionsByDate[fechaStr] || [];
                     const hasSessions = sessions.length > 0;
                     const allSuspended = hasSessions && sessions.every(s => toSuspendIds.has(String(s.id)));
                     const isSelected = selectedDates.some(d => isSameDay(d, day));
                     const isPast = isBefore(day, today);
                     const isToday = isSameDay(day, today);
-                    const isClickable = hasSessions || !isPast;
+                    const dayOfWeek = getDay(day);
+                    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+                    const isFeriado = FERIADOS_FIJOS.includes(fechaMD);
+                    const isNonWorkday = isWeekend || isFeriado;
+                    const isClickable = hasSessions || (!isPast && !isNonWorkday);
 
                     let bg;
                     if (hasSessions && allSuspended) {
@@ -170,6 +191,8 @@ const MultiDateCalendar = ({ selectedDates, onToggleDate, existingSessionsByDate
                         bg = 'linear-gradient(135deg, var(--primary), #0055aa)';
                     } else if (isSelected) {
                         bg = 'linear-gradient(135deg, #00e676, #00b248)';
+                    } else if (isNonWorkday) {
+                        bg = 'linear-gradient(135deg, #8b0000, #c0392b)';
                     } else {
                         bg = isPast ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.04)';
                     }
@@ -177,7 +200,7 @@ const MultiDateCalendar = ({ selectedDates, onToggleDate, existingSessionsByDate
                     const handleClick = () => {
                         if (hasSessions && onToggleSuspendDate) {
                             onToggleSuspendDate(fechaStr);
-                        } else if (!isPast) {
+                        } else if (!isPast && !isNonWorkday) {
                             onToggleDate(day);
                         }
                     };
@@ -188,12 +211,13 @@ const MultiDateCalendar = ({ selectedDates, onToggleDate, existingSessionsByDate
                             key={day.toISOString()}
                             onClick={handleClick}
                             disabled={!isClickable}
+                            title={isFeriado && !hasSessions ? 'Feriado / Asueto' : isWeekend && !hasSessions ? 'Fin de semana' : undefined}
                             style={{
                                 padding: '7px 3px 5px', borderRadius: '8px', textAlign: 'center',
                                 fontSize: '0.82rem', fontWeight: (hasSessions || isSelected) ? '700' : '400',
                                 border: isToday ? '2px solid #ffea00' : 'none',
                                 cursor: isClickable ? 'pointer' : 'not-allowed',
-                                opacity: isPast && !hasSessions ? 0.3 : 1,
+                                opacity: (isPast && !hasSessions && !isNonWorkday) ? 0.3 : 1,
                                 background: bg,
                                 color: 'white',
                                 transition: 'all 0.15s',
@@ -212,9 +236,12 @@ const MultiDateCalendar = ({ selectedDates, onToggleDate, existingSessionsByDate
                 })}
             </div>
 
-            {/* Leyenda cuando hay sesiones existentes */}
-            {hasExisting && (
-                <div style={{ marginTop: '10px', display: 'flex', gap: '14px', flexWrap: 'wrap', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+            {/* Leyenda */}
+            <div style={{ marginTop: '10px', display: 'flex', gap: '14px', flexWrap: 'wrap', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ width: '10px', height: '10px', borderRadius: '3px', background: 'linear-gradient(135deg,#8b0000,#c0392b)', display: 'inline-block' }} /> Feriado / Fin de semana
+                </span>
+                {hasExisting && <>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <span style={{ width: '10px', height: '10px', borderRadius: '3px', background: 'var(--primary)', display: 'inline-block' }} /> Turno programado
                     </span>
@@ -224,8 +251,8 @@ const MultiDateCalendar = ({ selectedDates, onToggleDate, existingSessionsByDate
                     <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <span style={{ width: '10px', height: '10px', borderRadius: '3px', background: '#00e676', display: 'inline-block' }} /> Nuevo turno
                     </span>
-                </div>
-            )}
+                </>}
+            </div>
 
             {/* Resumen de días seleccionados y a suspender */}
             {(selectedDates.length > 0 || toSuspendIds.size > 0) && (
