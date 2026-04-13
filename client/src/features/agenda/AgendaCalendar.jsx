@@ -159,7 +159,7 @@ const PatientPanel = ({ patient, onClose, onSaved }) => {
                                 👤 {patient.nombre} {patient.apellido}
                             </h2>
                             <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>
-                                HC: {patient.historia_clinica || '—'} · {patient.telefono || 'Sin teléfono'}
+                                HC: {patient.historia_clinica || '—'} · DNI: {patient.dni || 'Sin DNI'}
                             </p>
                         </div>
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -489,7 +489,19 @@ const UpcomingAppointmentsModal = ({ onClose }) => {
             }}>
                 <span style={{ fontWeight: '700', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     👤 {s.nombre} {s.apellido}
-                    <span style={{ fontSize: '0.75rem', fontWeight: '700', background: 'rgba(0,136,204,0.25)', color: 'var(--primary)', padding: '1px 7px', borderRadius: '10px', border: '1px solid rgba(0,136,204,0.4)' }}>
+                    <span style={{ 
+                        fontSize: '0.75rem', 
+                        fontWeight: '800', 
+                        background: 'rgba(0,136,204,0.25)', 
+                        color: 'var(--primary)', 
+                        minWidth: '20px',
+                        height: '20px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: '50%', 
+                        border: '1px solid rgba(0,136,204,0.4)' 
+                    }}>
                         {sessionCounts[String(s.paciente_id)] ?? 0}
                     </span>
                 </span>
@@ -763,7 +775,19 @@ const AgendaCalendar = () => {
                                                 }}>
                                                 {isAttended ? '✅ ' : isMissed ? '❌ ' : '👤 '}
                                                 {p.nombre} {p.apellido}
-                                                <span style={{ marginLeft: '6px', fontSize: '0.78rem', fontWeight: '700', background: 'rgba(255,255,255,0.15)', padding: '1px 7px', borderRadius: '10px' }}>
+                                                <span style={{ 
+                                                    marginLeft: '6px', 
+                                                    fontSize: '0.78rem', 
+                                                    fontWeight: '800', 
+                                                    background: 'rgba(255,255,255,0.25)', 
+                                                    color: 'white',
+                                                    minWidth: '22px',
+                                                    height: '22px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    borderRadius: '50%'
+                                                }}>
                                                     {p.sessionCount ?? 0}
                                                 </span>
                                             </button>

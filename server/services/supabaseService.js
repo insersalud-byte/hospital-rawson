@@ -90,7 +90,7 @@ async function getPacientes() {
 
 async function upsertPaciente(body) {
     const {
-        id, nombre, apellido, historia_clinica, telefono,
+        id, nombre, apellido, historia_clinica, telefono, dni,
         email, estado_paciente, observaciones,
         medico_derivante_nombre, medico_derivante_telefono,
         medico_derivante_institucion
@@ -103,6 +103,7 @@ async function upsertPaciente(body) {
         apellido,
         historia_clinica,
         telefono,
+        dni,
         email,
         estado_paciente: estado_paciente || 'activo',
         observaciones,

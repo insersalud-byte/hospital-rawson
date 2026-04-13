@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { createPortal } from 'react-dom';
 import axios from 'axios';
-import { Plus, Search, Phone, Hospital, MessageCircle, Calendar, ChevronLeft, ChevronRight, Edit, Trash2 } from 'lucide-react';
+import { Plus, Search, CreditCard, Hospital, MessageCircle, Calendar, ChevronLeft, ChevronRight, Edit, Trash2 } from 'lucide-react';
 import ClinicalSemaphore from '../../components/ui/ClinicalSemaphore';
 import CustomSelect from '../../components/ui/CustomSelect';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, isBefore, startOfDay } from 'date-fns';
@@ -283,7 +283,7 @@ const PatientList = () => {
     const openWhatsApp = (patient) => {
         if (!patient.whatsapp) { alert('Este paciente no tiene WhatsApp cargado.'); return; }
         const num = patient.whatsapp.replace(/\D/g, '');
-        const msg = encodeURIComponent(`¡Hola ${patient.nombre}! 👋 Te recordamos desde Hospital Rawson Kinesiología. Ante cualquier duda no dudes en contactarnos. ¡Te esperamos! 🏥`);
+        const msg = encodeURIComponent(`¡Hola ${patient.nombre}! 👋 Te recordamos desde Hospital Rawson Kinesiología. Ante cualquier duda no dudes en contactarnos. ¡Te esperamos! 🏥\n\nPOR FAVOR PRESENTARSE 5 MINUTOS ANTES.\nNOTA: AUSENTE SIN AVISO NO SE RECUPERA LA SESION. SOLO SE ACEPTA 2 INASISTENCIAS SINO PIERDE LA TOTALIDAD DE LOS TURNOS.`);
         window.open(`https://wa.me/${num}?text=${msg}`, '_blank');
     };
 
@@ -364,7 +364,7 @@ const PatientList = () => {
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.87rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                                <Phone size={13} color="var(--primary)" /> <span>{patient.telefono || 'Sin teléfono'}</span>
+                                <CreditCard size={13} color="var(--primary)" /> <span>DNI: {patient.dni || 'Sin DNI'}</span>
                             </div>
                             {patient.medico_derivante_nombre && (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
@@ -406,7 +406,7 @@ const PatientList = () => {
 const PatientForm = ({ onClose, onSave, patientToEdit, existingDoctors = [], existingInstitutions = [] }) => {
     const [formData, setFormData] = useState({
         nombre: patientToEdit?.nombre || '', apellido: patientToEdit?.apellido || '',
-        historia_clinica: patientToEdit?.historia_clinica || '', telefono: patientToEdit?.telefono || '',
+        historia_clinica: patientToEdit?.historia_clinica || '', dni: patientToEdit?.dni || '',
         whatsapp: patientToEdit?.whatsapp || '', estado_paciente: patientToEdit?.estado_paciente || 'activo',
         medico_derivante_nombre: patientToEdit?.medico_derivante_nombre || '', medico_derivante_institucion: patientToEdit?.medico_derivante_institucion || '',
         observaciones: patientToEdit?.observaciones || '', patologia: patientToEdit?.patologia || '',
@@ -510,10 +510,13 @@ const PatientForm = ({ onClose, onSave, patientToEdit, existingDoctors = [], exi
             if (formData.whatsapp && (!isEditing || sesionesNuevas > 0)) {
                 const num = formData.whatsapp.replace(/\D/g, '');
                 if (sesionesNuevas > 0) {
+                    const horaInt = parseInt(horaTurno.split(':')[0], 10);
+                    const indicacionPresencia = horaInt < 13 ? '7:30' : '14:30';
                     const turnosTexto = selectedDates
-                        .map(d => `📅 ${format(d, "EEEE d/MM", { locale: es })} a las ${horaTurno} hs`)
+                        .map(d => `📅 ${format(d, "EEEE d/MM", { locale: es })} a las ${indicacionPresencia} hs`)
                         .join('\n');
-                    const mensaje = `¡Hola ${formData.nombre}! 👋 Te confirmamos tus turnos de Kinesiología en Hospital Rawson:\n\n${turnosTexto}\n\nTotal: ${sesionesNuevas} sesión${sesionesNuevas !== 1 ? 'es' : ''} programada${sesionesNuevas !== 1 ? 's' : ''}.\n\nAnte cualquier duda contactanos. ¡Te esperamos! 🏥`;
+
+                    const mensaje = `¡Hola ${formData.nombre}! 👋 Te confirmamos tus turnos de Kinesiología en Hospital Rawson:\n\n${turnosTexto}\n\n*Por favor presentarse a las ${indicacionPresencia} hs.*\n\nTotal: ${sesionesNuevas} sesión${sesionesNuevas !== 1 ? 'es' : ''} programada${sesionesNuevas !== 1 ? 's' : ''}.\n\nAnte cualquier duda contactanos. ¡Te esperamos! 🏥\n\nPOR FAVOR PRESENTARSE 5 MINUTOS ANTES.\nNOTA: AUSENTE SIN AVISO NO SE RECUPERA LA SESION. SOLO SE ACEPTA 2 INASISTENCIAS SINO PIERDE LA TOTALIDAD DE LOS TURNOS.`;
                     setWaLink(`https://wa.me/${num}?text=${encodeURIComponent(mensaje)}`);
                 }
             }
@@ -606,7 +609,7 @@ const PatientForm = ({ onClose, onSave, patientToEdit, existingDoctors = [], exi
                                 {field('nombre', 'Nombre *')}
                                 {field('apellido', 'Apellido *')}
                                 {field('historia_clinica', 'Historia Clínica *')}
-                                {field('telefono', 'Teléfono')}
+                                {field('dni', 'DNI')}
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(37,211,102,0.07)', borderRadius: '10px', padding: '0 10px', border: '1px solid #25d366', gridColumn: 'span 2' }}>
                                     <MessageCircle size={16} color="#25d366" />
                                     <input
