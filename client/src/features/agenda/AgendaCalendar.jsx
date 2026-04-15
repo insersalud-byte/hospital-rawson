@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { format, addMinutes, startOfDay, setHours, setMinutes, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Clock, Users, Timer, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Users, Timer, Trash2, FileText } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 const API_URL = import.meta.env.MODE === 'development' ? 'http://localhost:3005/api' : '/api';
@@ -193,6 +193,12 @@ const PatientPanel = ({ patient, onClose, onSaved }) => {
                             background: mode === 'atender' ? '#00e676' : 'rgba(255,255,255,0.07)',
                             color: mode === 'atender' ? '#000' : 'white'
                         }}>🩺 Atender</button>
+                        <button onClick={() => setMode('resumen_hc')} style={{
+                            padding: '8px 18px', borderRadius: '20px', fontWeight: '600', fontSize: '0.85rem',
+                            border: 'none', cursor: 'pointer',
+                            background: mode === 'resumen_hc' ? '#ff9800' : 'rgba(255,255,255,0.07)',
+                            color: 'white'
+                        }}>📄 RESUMEN DE H.C.</button>
                     </div>
                 </div>
 
@@ -252,6 +258,60 @@ const PatientPanel = ({ patient, onClose, onSaved }) => {
                                 </div>
                             ))}
                         </>
+                    )}
+
+                    {/* ── RESUMEN H.C. (LECTURA) ── */}
+                    {mode === 'resumen_hc' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                            {/* Resumen Inicial */}
+                            <div style={{ padding: '20px', background: 'rgba(255,152,0,0.1)', borderRadius: '15px', border: '1px solid #ff9800' }}>
+                                <h4 style={{ color: '#ff9800', marginBottom: '10px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <FileText size={18} /> RESUMEN INICIAL / DATOS CARGADOS
+                                </h4>
+                                <div style={{ fontSize: '1.05rem', lineHeight: '1.5', whiteSpace: 'pre-wrap', color: '#eee' }}>
+                                    {patient.resumen_hc || <span style={{ fontStyle: 'italic', color: 'var(--text-muted)' }}>Sin resumen inicial cargado en administración de pacientes.</span>}
+                                </div>
+                            </div>
+
+                            {/* Evoluciones históricas */}
+                            <div>
+                                <h4 style={{ color: 'var(--primary)', marginBottom: '15px', fontSize: '0.95rem', paddingLeft: '5px' }}>
+                                    📈 EVOLUCIONES POR SESIÓN (ORDEN CRONOLÓGICO)
+                                </h4>
+                                {loadingHistory && <p style={{ color: 'var(--text-muted)' }}>Cargando evoluciones...</p>}
+                                {!loadingHistory && history.filter(s => s.estado === 'asistió' && s.observaciones).length === 0 && (
+                                    <p style={{ color: 'var(--text-muted)', fontStyle: 'italic', paddingLeft: '5px' }}>Aún no hay evoluciones registradas en las sesiones.</p>
+                                )}
+                                {!loadingHistory && history
+                                    .filter(s => s.estado === 'asistió' && s.observaciones)
+                                    .sort((a,b) => new Date(a.fecha + 'T' + a.hora) - new Date(b.fecha + 'T' + b.hora))
+                                    .map((s, i) => (
+                                        <div key={i} style={{
+                                            padding: '15px', marginBottom: '12px',
+                                            background: 'rgba(255,255,255,0.03)',
+                                            borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)',
+                                            borderLeft: '4px solid var(--primary)'
+                                        }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.8rem' }}>
+                                                <span style={{ fontWeight: '800', color: 'var(--primary)' }}>
+                                                    📅 {format(new Date(s.fecha + 'T00:00:00'), "d 'de' MMMM, yyyy", { locale: es })}
+                                                </span>
+                                                <span style={{ color: 'var(--text-muted)' }}>
+                                                    🩺 {s.kinesiologo_nombre_snapshot || '—'}
+                                                </span>
+                                            </div>
+                                            <div style={{ fontSize: '0.92rem', lineHeight: '1.5', color: '#ddd', whiteSpace: 'pre-wrap' }}>
+                                                {s.observaciones}
+                                            </div>
+                                            {s.tratamiento_nombre && (
+                                                <div style={{ marginTop: '10px', fontSize: '0.75rem', color: 'var(--primary)', fontWeight: '600', opacity: 0.8 }}>
+                                                    Tratamiento: {s.tratamiento_nombre}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                            </div>
+                        </div>
                     )}
 
                     {/* ── ATENDER ── */}
