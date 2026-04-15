@@ -65,7 +65,7 @@ module.exports = async (req, res) => {
             }
 
             // POST → upsert patient
-            const { nombre, apellido, historia_clinica, telefono, whatsapp, email, created_at, estado_paciente, observaciones, medico_derivante_nombre, medico_derivante_telefono, medico_derivante_institucion, patologia } = req.body;
+            const { nombre, apellido, historia_clinica, telefono, whatsapp, email, created_at, estado_paciente, observaciones, medico_derivante_nombre, medico_derivante_telefono, medico_derivante_institucion, patologia, resumen_hc, dni } = req.body;
             const recordId = parseId(id) || Date.now();
             const { error } = await supabase.from('rawson_pacientes').upsert({
                 id: recordId,
@@ -78,7 +78,9 @@ module.exports = async (req, res) => {
                 medico_derivante_nombre,
                 medico_derivante_telefono,
                 medico_derivante_institucion,
-                patologia: patologia || null
+                patologia: patologia || null,
+                resumen_hc: resumen_hc || null,
+                dni: dni || null
             });
             if (error) throw error;
             return res.json({ success: true, id: recordId });

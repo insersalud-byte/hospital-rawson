@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { createPortal } from 'react-dom';
 import axios from 'axios';
-import { Plus, Search, CreditCard, Hospital, MessageCircle, Calendar, ChevronLeft, ChevronRight, Edit, Trash2 } from 'lucide-react';
+import { Plus, Search, CreditCard, Hospital, MessageCircle, Calendar, ChevronLeft, ChevronRight, Edit, Trash2, FileText, Eye, Pencil } from 'lucide-react';
 import ClinicalSemaphore from '../../components/ui/ClinicalSemaphore';
 import CustomSelect from '../../components/ui/CustomSelect';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, isBefore, startOfDay } from 'date-fns';
@@ -273,6 +273,65 @@ const MultiDateCalendar = ({ selectedDates, onToggleDate, existingSessionsByDate
     );
 };
 
+// ─── Modal Resumen H.C. ──────────────────────────────────────────────────────
+const SummaryHCModal = ({ patient, mode, onClose, onSave }) => {
+    const [summary, setSummary] = useState(patient.resumen_hc || '');
+    const [saving, setSaving] = useState(false);
+
+    const handleSave = async () => {
+        setSaving(true);
+        try {
+            await axios.post(`${API_URL}/patients`, { 
+                ...patient, 
+                resumen_hc: summary 
+            });
+            onSave();
+            onClose();
+        } catch (err) {
+            console.error('Error guardando resumen HC:', err);
+            alert('Error al guardar el resumen.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return createPortal(
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '20px' }} onClick={onClose}>
+            <div className="premium-card glass-panel" style={{ width: '100%', maxWidth: '600px', padding: '30px', borderTop: '4px solid var(--primary)', position: 'relative' }} onClick={e => e.stopPropagation()}>
+                <button onClick={onClose} style={{ position: 'absolute', top: '15px', right: '15px', background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>
+                <h3 style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.2rem' }}>
+                    {mode === 'edit' ? <Pencil size={20} color="var(--primary)" /> : <Eye size={20} color="var(--primary)" />}
+                    {mode === 'edit' ? 'Editar Resumen H.C.' : 'Resumen Historia Clínica'}
+                </h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '15px' }}>Paciente: <strong style={{color: 'white'}}>{patient.nombre} {patient.apellido}</strong></p>
+                
+                {mode === 'edit' ? (
+                    <textarea 
+                        autoFocus
+                        value={summary}
+                        onChange={e => setSummary(e.target.value)}
+                        placeholder="Escriba aquí el resumen de la historia clínica..."
+                        style={{ width: '100%', minHeight: '300px', padding: '15px', borderRadius: '12px', background: 'rgba(0,0,0,0.3)', color: 'white', border: '1px solid var(--border)', fontSize: '1rem', resize: 'vertical', outline: 'none', fontFamily: 'inherit' }}
+                    />
+                ) : (
+                    <div style={{ width: '100%', minHeight: '200px', maxHeight: '500px', overflowY: 'auto', padding: '20px', borderRadius: '12px', background: 'rgba(0,0,0,0.2)', color: '#eee', border: '1px solid var(--border)', fontSize: '1.05rem', whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
+                        {summary || <span style={{ fontStyle: 'italic', color: 'var(--text-muted)' }}>No hay un resumen cargado para este paciente.</span>}
+                    </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '12px', marginTop: '30px', justifyContent: 'flex-end' }}>
+                    <button onClick={onClose} style={{ padding: '10px 20px', borderRadius: '10px', background: 'rgba(255,255,255,0.08)', border: '1px solid var(--border)', color: 'white', cursor: 'pointer', fontWeight: '600' }}>Cerrar</button>
+                    {mode === 'edit' && (
+                        <button onClick={handleSave} disabled={saving} className="vibrant-gradient" style={{ padding: '10px 25px', borderRadius: '10px', border: 'none', color: 'white', fontWeight: '700', cursor: 'pointer', opacity: saving ? 0.7 : 1 }}>
+                            {saving ? 'Guardando...' : 'GUARDAR RESUMEN'}
+                        </button>
+                    )}
+                </div>
+            </div>
+        </div>
+    , document.body);
+};
+
 // ─── Lista de Pacientes ───────────────────────────────────────────────────────
 const PatientList = () => {
     const { isAdmin } = useAuth();
@@ -280,6 +339,7 @@ const PatientList = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [showForm, setShowForm] = useState(false);
     const [patientToEdit, setPatientToEdit] = useState(null);
+    const [summaryModal, setSummaryModal] = useState({ show: false, patient: null, mode: 'read' });
 
     useEffect(() => { fetchPatients(); }, []);
 
@@ -376,6 +436,21 @@ const PatientList = () => {
                                 </button>
                                 {isAdmin && (
                                     <>
+                                        <button onClick={() => setSummaryModal({ show: true, patient, mode: 'edit' })}
+                                            style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,165,0,0.15)', border: '1px solid #ffa500', color: '#ffa500', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '700' }}
+                                            title="Escribir Resumen H.C.">
+                                            <FileText size={14} /> RESUMEN H.C.
+                                        </button>
+                                        <button onClick={() => setSummaryModal({ show: true, patient, mode: 'edit' })}
+                                            style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.08)', border: '1px solid var(--border)', color: 'white', padding: '6px', borderRadius: '8px', cursor: 'pointer' }}
+                                            title="Editar Resumen H.C.">
+                                            <Pencil size={14} />
+                                        </button>
+                                        <button onClick={() => setSummaryModal({ show: true, patient, mode: 'read' })}
+                                            style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.08)', border: '1px solid var(--border)', color: 'white', padding: '6px', borderRadius: '8px', cursor: 'pointer' }}
+                                            title="Ver Resumen H.C.">
+                                            <Eye size={14} />
+                                        </button>
                                         <button onClick={() => deletePatient(patient.id, `${patient.nombre} ${patient.apellido}`)}
                                             style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(255,82,82,0.1)', border: '1px solid #ff5252', color: '#ff5252', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}
                                             title="Eliminar paciente">
@@ -440,6 +515,15 @@ const PatientList = () => {
                     patientToEdit={patientToEdit} 
                     existingDoctors={[...new Set(patients.map(p => p.medico_derivante_nombre).filter(Boolean))]}
                     existingInstitutions={[...new Set(patients.map(p => p.medico_derivante_institucion).filter(Boolean))]}
+                />
+            )}
+
+            {summaryModal.show && (
+                <SummaryHCModal 
+                    patient={summaryModal.patient} 
+                    mode={summaryModal.mode} 
+                    onClose={() => setSummaryModal({ show: false, patient: null, mode: 'read' })} 
+                    onSave={fetchPatients} 
                 />
             )}
         </div>

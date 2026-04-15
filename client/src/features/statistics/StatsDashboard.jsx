@@ -3,7 +3,7 @@ import axios from 'axios';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Calendar, Download, Filter, FileText } from 'lucide-react';
+import { Calendar, Download, Filter, FileText, Database } from 'lucide-react';
 
 const API_URL = import.meta.env.MODE === 'development' ? 'http://localhost:3005/api' : '/api';
 const COLORS = ['#0088cc', '#00e676', '#ffea00', '#ff5252', '#9c27b0', '#ff9800'];
@@ -50,6 +50,70 @@ const StatsDashboard = () => {
 
     const handlePrint = () => {
         window.print();
+    };
+
+    const handleBackup = async () => {
+        try {
+            const [resPatients, resSessions] = await Promise.all([
+                axios.get(`${API_URL}/patients`),
+                axios.get(`${API_URL}/sessions`)
+            ]);
+            
+            const patients = resPatients.data || [];
+            const sessions = resSessions.data || [];
+
+            // Generar CSV (compatible con Excel)
+            let csvContent = "\ufeff"; // BOM para que Excel detecte UTF-8
+            csvContent += "--- PACIENTES ---\n";
+            csvContent += "ID;Apellido;Nombre;DNI;HC;WhatsApp;Estado;Patologia;Medico;Institucion;Resumen HC;Observaciones\n";
+            patients.forEach(p => {
+                const row = [
+                    p.id,
+                    p.apellido || '',
+                    p.nombre || '',
+                    p.dni || '',
+                    p.historia_clinica || '',
+                    p.whatsapp || '',
+                    p.estado_paciente || '',
+                    p.patologia || '',
+                    p.medico_derivante_nombre || '',
+                    p.medico_derivante_institucion || '',
+                    (p.resumen_hc || '').replace(/[;\n\r]/g, ' '),
+                    (p.observaciones || '').replace(/[;\n\r]/g, ' ')
+                ].map(val => `"${String(val).replace(/"/g, '""')}"`).join(";");
+                csvContent += row + "\n";
+            });
+
+            csvContent += "\n--- SESIONES ---\n";
+            csvContent += "ID;Paciente;Fecha;Hora;Estado;Kinesiologo;Tratamientos;Observaciones\n";
+            sessions.forEach(s => {
+                const pat = patients.find(p => String(p.id) === String(s.paciente_id));
+                const patientName = pat ? `${pat.apellido} ${pat.nombre}` : 'Desconocido';
+                const row = [
+                    s.id,
+                    patientName,
+                    s.fecha,
+                    s.hora,
+                    s.estado || 'programado',
+                    s.kinesiologo_nombre_snapshot || '',
+                    (s.tratamientos_texto || '').replace(/[;\n\r]/g, ' '),
+                    (s.observaciones || '').replace(/[;\n\r]/g, ' ')
+                ].map(val => `"${String(val).replace(/"/g, '""')}"`).join(";");
+                csvContent += row + "\n";
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `backup_hospital_rawson_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (err) {
+            console.error("Error en backup:", err);
+            alert("Error al generar el backup.");
+        }
     };
 
     if (loading && !stats) return <div style={{ padding: '40px', textAlign: 'center' }}>Cargando Informe Analítico...</div>;
@@ -102,12 +166,20 @@ const StatsDashboard = () => {
                     </h2>
                     <p style={{ color: 'var(--text-muted)' }}>Métricas e indicadores globales del sistema.</p>
                 </div>
-                <button onClick={handlePrint} className="vibrant-gradient" style={{
-                    display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px',
-                    borderRadius: '12px', fontWeight: '700', border: 'none', cursor: 'pointer', color: 'white'
-                }}>
-                    <Download size={18} /> IMPRIMIR / PDF
-                </button>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                    <button onClick={handleBackup} className="glass-panel" style={{
+                        display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px',
+                        borderRadius: '12px', fontWeight: '700', border: '1px solid var(--primary)', cursor: 'pointer', color: 'var(--primary)'
+                    }}>
+                        <Database size={18} /> GENERAR BACKUP EXCEL
+                    </button>
+                    <button onClick={handlePrint} className="vibrant-gradient" style={{
+                        display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px',
+                        borderRadius: '12px', fontWeight: '700', border: 'none', cursor: 'pointer', color: 'white'
+                    }}>
+                        <Download size={18} /> IMPRIMIR / PDF
+                    </button>
+                </div>
             </div>
 
             {/* Panel de Filtros */}
