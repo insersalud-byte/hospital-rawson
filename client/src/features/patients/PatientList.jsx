@@ -317,7 +317,7 @@ const PatientList = () => {
     const sendSuspensionNotice = (patient) => {
         if (!patient.whatsapp) { alert('Este paciente no tiene WhatsApp cargado.'); return; }
         const num = patient.whatsapp.replace(/\D/g, '');
-        const msg = encodeURIComponent(`HOLA ${patient.nombre.toUpperCase()} ${patient.apellido.toUpperCase()} DEBIDO A QUE UD PRESENTA 2 AUSENTES SIN AVISO, LE INFORMAMOS QUE DAMOS POR FINALIZADO SU TRATAMIENTO`);
+        const msg = encodeURIComponent(`HOLA ${patient.nombre.toUpperCase()} ${patient.apellido.toUpperCase()}, NOS COMUNICAMOS DEL SERVICIO DE KINESIOLOGIA DEL HOSPITAL RAWSON. DEBIDO A QUE UD PRESENTA 2 AUSENTES SIN AVISO, Y LA ALTA DEMANDA DE ATENCION DE ESTE SERVICIO, Y QUE SU TURNO LE QUITA LA POSIBILIDAD DE ATENCION A OTRO PACIENTE, DAMOS POR FINALIZADO SU TRATAMIENTO.\n\nNOTA: Si desea retomar en un futuro solicite turno por esta vía con un nuevo pedido médico. Muchas gracias.`);
         window.open(`https://wa.me/${num}?text=${msg}`, '_blank');
     };
 
