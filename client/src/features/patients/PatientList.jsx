@@ -314,6 +314,13 @@ const PatientList = () => {
         window.open(`https://wa.me/${num}?text=${msg}`, '_blank');
     };
 
+    const sendSuspensionNotice = (patient) => {
+        if (!patient.whatsapp) { alert('Este paciente no tiene WhatsApp cargado.'); return; }
+        const num = patient.whatsapp.replace(/\D/g, '');
+        const msg = encodeURIComponent(`HOLA ${patient.nombre.toUpperCase()} ${patient.apellido.toUpperCase()} DEBIDO A QUE UD PRESENTA 2 AUSENTES SIN AVISO, LE INFORMAMOS QUE DAMOS POR FINALIZADO SU TRATAMIENTO`);
+        window.open(`https://wa.me/${num}?text=${msg}`, '_blank');
+    };
+
     const [expandedHistoryId, setExpandedHistoryId] = useState(null);
 
     return (
@@ -403,14 +410,24 @@ const PatientList = () => {
                         {expandedHistoryId === patient.id && <PatientHistory patient={patient} />}
 
                         {patient.whatsapp && (
-                            <button onClick={() => openWhatsApp(patient)} style={{
-                                marginTop: '12px', width: '100%', padding: '8px', borderRadius: '8px',
-                                background: 'rgba(37,211,102,0.12)', border: '1px solid #25d366',
-                                color: '#25d366', fontWeight: '600', fontSize: '0.82rem', cursor: 'pointer',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
-                            }}>
-                                <MessageCircle size={14} /> Enviar WhatsApp
-                            </button>
+                            <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                                <button onClick={() => openWhatsApp(patient)} style={{
+                                    flex: 1, padding: '10px 8px', borderRadius: '8px',
+                                    background: 'rgba(37,211,102,0.12)', border: '1px solid #25d366',
+                                    color: '#25d366', fontWeight: '600', fontSize: '0.75rem', cursor: 'pointer',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px'
+                                }}>
+                                    <MessageCircle size={14} /> WhatsApp
+                                </button>
+                                <button onClick={() => sendSuspensionNotice(patient)} style={{
+                                    flex: 1.5, padding: '10px 8px', borderRadius: '8px',
+                                    background: 'rgba(255,82,82,0.12)', border: '1px solid #ff5252',
+                                    color: '#ff5252', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px'
+                                }}>
+                                    ⚠️ AVISO DE SUSPENSIÓN
+                                </button>
+                            </div>
                         )}
                     </div>
                 ))}
