@@ -409,11 +409,14 @@ const UpcomingAppointmentsModal = ({ onClose }) => {
                     .filter(s => s.estado === 'programado' && new Date(s.fecha + 'T00:00:00') >= today)
                     .sort((a,b) => new Date(a.fecha + 'T' + a.hora) - new Date(b.fecha + 'T' + b.hora));
                 setUpcoming(list);
-                // Contar sesiones completadas por paciente
+                // Contar sesiones (asistió + no asistió) por paciente
                 const counts = {};
                 all.forEach(s => {
-                    if (s.estado === 'asistió' && s.paciente_id) {
-                        counts[String(s.paciente_id)] = (counts[String(s.paciente_id)] || 0) + 1;
+                    if (s.paciente_id) {
+                        const pid = String(s.paciente_id);
+                        if (!counts[pid]) counts[pid] = { assisted: 0, missed: 0 };
+                        if (s.estado === 'asistió') counts[pid].assisted++;
+                        else if (s.estado === 'no asistió') counts[pid].missed++;
                     }
                 });
                 setSessionCounts(counts);
@@ -492,17 +495,17 @@ const UpcomingAppointmentsModal = ({ onClose }) => {
                     <span style={{ 
                         fontSize: '0.75rem', 
                         fontWeight: '800', 
-                        background: 'rgba(0,136,204,0.25)', 
-                        color: 'var(--primary)', 
+                        background: (sessionCounts[String(s.paciente_id)]?.missed >= 2) ? 'rgba(255,82,82,0.25)' : 'rgba(0,136,204,0.25)', 
+                        color: (sessionCounts[String(s.paciente_id)]?.missed >= 2) ? '#ff5252' : 'var(--primary)', 
                         minWidth: '20px',
                         height: '20px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         borderRadius: '50%', 
-                        border: '1px solid rgba(0,136,204,0.4)' 
+                        border: (sessionCounts[String(s.paciente_id)]?.missed >= 2) ? '1px solid rgba(255,82,82,0.4)' : '1px solid rgba(0,136,204,0.4)' 
                     }}>
-                        {sessionCounts[String(s.paciente_id)] ?? 0}
+                        {(sessionCounts[String(s.paciente_id)]?.assisted || 0) + (sessionCounts[String(s.paciente_id)]?.missed || 0)}
                     </span>
                 </span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -649,11 +652,14 @@ const AgendaCalendar = () => {
 
             const allSessions = Array.isArray(resSessions.data) ? resSessions.data : [];
 
-            // Contar sesiones completadas ('asistió') por paciente
-            const sessionCounts = {};
+            // Contar asistencias y faltas por paciente
+            const sessionData = {};
             allSessions.forEach(s => {
-                if (s.estado === 'asistió' && s.paciente_id) {
-                    sessionCounts[String(s.paciente_id)] = (sessionCounts[String(s.paciente_id)] || 0) + 1;
+                if (s.paciente_id) {
+                    const pid = String(s.paciente_id);
+                    if (!sessionData[pid]) sessionData[pid] = { assisted: 0, missed: 0 };
+                    if (s.estado === 'asistió') sessionData[pid].assisted++;
+                    else if (s.estado === 'no asistió') sessionData[pid].missed++;
                 }
             });
 
@@ -674,7 +680,14 @@ const AgendaCalendar = () => {
                 let count = 0;
                 while (newApt[`${hora}-${count}`]) { count++; }
 
-                newApt[`${hora}-${count}`] = { ...patient, sessionId: session.id, hora, estado: session.estado, sessionCount: sessionCounts[String(patient.id)] || 0 };
+                newApt[`${hora}-${count}`] = { 
+                    ...patient, 
+                    sessionId: session.id, 
+                    hora, 
+                    estado: session.estado, 
+                    sessionCount: sessionData[String(patient.id)]?.assisted || 0,
+                    missedCount: sessionData[String(patient.id)]?.missed || 0 
+                };
             });
             setAppointments(newApt);
         } catch (err) {
@@ -779,16 +792,17 @@ const AgendaCalendar = () => {
                                                     marginLeft: '6px', 
                                                     fontSize: '0.78rem', 
                                                     fontWeight: '800', 
-                                                    background: 'rgba(255,255,255,0.25)', 
-                                                    color: 'white',
+                                                    background: (p.missedCount >= 2) ? 'rgba(255,82,82,0.4)' : 'rgba(255,255,255,0.25)', 
+                                                    color: (p.missedCount >= 2) ? '#ff5252' : 'white',
                                                     minWidth: '22px',
                                                     height: '22px',
                                                     display: 'flex',
                                                     alignItems: 'center',
                                                     justifyContent: 'center',
-                                                    borderRadius: '50%'
+                                                    borderRadius: '50%',
+                                                    border: (p.missedCount >= 2) ? '1px solid #ff5252' : 'none'
                                                 }}>
-                                                    {p.sessionCount ?? 0}
+                                                    {(p.sessionCount || 0) + (p.missedCount || 0)}
                                                 </span>
                                             </button>
                                         );

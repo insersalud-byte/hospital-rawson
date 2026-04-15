@@ -6,7 +6,8 @@
       "Bash(npm run:*)",
       "mcp__claude_ai_Vercel__list_projects",
       "mcp__claude_ai_Supabase__list_projects",
-      "mcp__claude_ai_Supabase__execute_sql"
+      "mcp__claude_ai_Supabase__execute_sql",
+      "Bash(vercel --prod --yes)"
     ]
   }
 }
