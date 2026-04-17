@@ -2,14 +2,16 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { format, addMinutes, startOfDay, setHours, setMinutes, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Clock, Users, Timer, Trash2, FileText } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Users, Timer, Trash2, FileText, Pencil } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { PatientForm, SummaryHCModal } from '../patients/PatientForm';
 
 const API_URL = import.meta.env.MODE === 'development' ? 'http://localhost:3005/api' : '/api';
 
 // ─── Historial + Panel de Atención ────────────────────────────────────────────
-const PatientPanel = ({ patient, onClose, onSaved }) => {
+const PatientPanel = ({ patient: initialPatient, onClose, onSaved }) => {
     const { user } = useAuth();
+    const [patient, setPatient] = useState(initialPatient);
     const [history, setHistory] = useState([]);
     const [loadingHistory, setLoadingHistory] = useState(true);
     const [mode, setMode] = useState('history'); // 'history' | 'atender'
@@ -18,6 +20,8 @@ const PatientPanel = ({ patient, onClose, onSaved }) => {
     const [observaciones, setObservaciones] = useState('');
     const [notasExtra, setNotasExtra] = useState('');
     const [saving, setSaving] = useState(false);
+    const [showEditForm, setShowEditForm] = useState(false);
+    const [showSummaryModal, setShowSummaryModal] = useState(false);
 
     // Timer de 45 min
     const [timerActive, setTimerActive] = useState(false);
@@ -155,8 +159,15 @@ const PatientPanel = ({ patient, onClose, onSaved }) => {
                 <div style={{ padding: '22px 28px', borderBottom: '1px solid rgba(255,255,255,0.15)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
-                            <h2 style={{ fontSize: '1.3rem', marginBottom: '3px' }}>
+                            <h2 style={{ fontSize: '1.3rem', marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                                 👤 {patient.nombre} {patient.apellido}
+                                <button 
+                                    onClick={() => setShowEditForm(true)}
+                                    style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid var(--border)', color: 'white', padding: '5px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                                    title="Editar Datos del Paciente"
+                                >
+                                    <Pencil size={14} />
+                                </button>
                             </h2>
                             <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>
                                 HC: {patient.historia_clinica || '—'} · DNI: {patient.dni || 'Sin DNI'}
@@ -197,8 +208,18 @@ const PatientPanel = ({ patient, onClose, onSaved }) => {
                             padding: '8px 18px', borderRadius: '20px', fontWeight: '600', fontSize: '0.85rem',
                             border: 'none', cursor: 'pointer',
                             background: mode === 'resumen_hc' ? '#ff9800' : 'rgba(255,255,255,0.07)',
-                            color: 'white'
-                        }}>📄 RESUMEN DE H.C.</button>
+                            color: 'white', display: 'flex', alignItems: 'center', gap: '6px'
+                        }}>📄 Resumen</button>
+                        <button
+                            onClick={() => setShowSummaryModal(true)}
+                            title="Editar Resumen H.C."
+                            style={{
+                                padding: '8px 12px', borderRadius: '20px', fontWeight: '600', fontSize: '0.85rem',
+                                border: '1px solid #ff9800', cursor: 'pointer',
+                                background: 'rgba(255,152,0,0.15)',
+                                color: '#ff9800', display: 'flex', alignItems: 'center', gap: '5px'
+                            }}
+                        ><Pencil size={14} /></button>
                     </div>
                 </div>
 
@@ -265,8 +286,16 @@ const PatientPanel = ({ patient, onClose, onSaved }) => {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                             {/* Resumen Inicial */}
                             <div style={{ padding: '20px', background: 'rgba(255,152,0,0.1)', borderRadius: '15px', border: '1px solid #ff9800' }}>
-                                <h4 style={{ color: '#ff9800', marginBottom: '10px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <FileText size={18} /> RESUMEN INICIAL / DATOS CARGADOS
+                                <h4 style={{ color: '#ff9800', marginBottom: '10px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <FileText size={18} /> RESUMEN INICIAL / DATOS CARGADOS
+                                    </div>
+                                    <button 
+                                        onClick={() => setShowSummaryModal(true)}
+                                        style={{ background: 'rgba(255,152,0,0.2)', border: '1px solid #ff9800', color: 'white', padding: '5px 10px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: '700' }}
+                                    >
+                                        <Pencil size={12} /> EDITAR RESUMEN
+                                    </button>
                                 </h4>
                                 <div style={{ fontSize: '1.05rem', lineHeight: '1.5', whiteSpace: 'pre-wrap', color: '#eee' }}>
                                     {patient.resumen_hc || <span style={{ fontStyle: 'italic', color: 'var(--text-muted)' }}>Sin resumen inicial cargado en administración de pacientes.</span>}
@@ -436,6 +465,36 @@ const PatientPanel = ({ patient, onClose, onSaved }) => {
                         </div>
                     )}
                 </div>
+
+                {showEditForm && (
+                    <PatientForm 
+                        patientToEdit={patient}
+                        onClose={() => setShowEditForm(false)}
+                        onSave={() => {
+                            setShowEditForm(false);
+                            onSaved(); // Refrescar agenda
+                        }}
+                    />
+                )}
+
+                {showSummaryModal && (
+                    <SummaryHCModal 
+                        patient={patient}
+                        mode="edit"
+                        onClose={() => setShowSummaryModal(false)}
+                        onSave={() => {
+                            setShowSummaryModal(false);
+                            // Actualizar localmente el resumen para que se vea el cambio sin cerrar el panel
+                            axios.get(`${API_URL}/patients`)
+                                .then(res => {
+                                    const p = (Array.isArray(res.data) ? res.data : []).find(p => p.id === patient.id);
+                                    if (p) setPatient(p);
+                                })
+                                .catch(() => { });
+                            onSaved(); // Igual notificamos al padre para que la agenda sepa que algo cambió
+                        }}
+                    />
+                )}
             </div>
         </dialog>
     );
@@ -455,6 +514,8 @@ const UpcomingAppointmentsModal = ({ onClose }) => {
     const [saving, setSaving] = useState(false);
     const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
     const [selectedDay, setSelectedDay] = useState(null);
+    const [patientToEdit, setPatientToEdit] = useState(null);
+    const [summaryPatient, setSummaryPatient] = useState(null);
 
     const [sessionCounts, setSessionCounts] = useState({});
 
@@ -568,7 +629,19 @@ const UpcomingAppointmentsModal = ({ onClose }) => {
                         {(sessionCounts[String(s.paciente_id)]?.assisted || 0) + (sessionCounts[String(s.paciente_id)]?.missed || 0)}
                     </span>
                 </span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <button onClick={() => setSummaryPatient(s)} style={{
+                        background: 'rgba(255,165,0,0.15)', border: 'none', color: '#ffa500',
+                        padding: '6px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }} title="Resumen H.C.">
+                        <FileText size={14} />
+                    </button>
+                    <button onClick={() => setPatientToEdit(s)} style={{
+                        background: 'rgba(255,255,255,0.08)', border: 'none', color: 'white',
+                        padding: '6px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }} title="Editar Paciente">
+                        <Pencil size={14} />
+                    </button>
                     <span style={{
                         color: 'var(--primary)', fontWeight: '700', fontSize: '0.85rem',
                         background: 'rgba(0,136,204,0.15)', padding: '3px 10px', borderRadius: '20px'
@@ -684,6 +757,29 @@ const UpcomingAppointmentsModal = ({ onClose }) => {
                 <div style={{ padding: '15px', borderTop: '1px solid rgba(255,255,255,0.15)', textAlign: 'center', flexShrink: 0 }}>
                     <button onClick={onClose} className="vibrant-gradient" style={{ padding: '12px 35px', borderRadius: '12px', border: 'none', color: 'white', fontWeight: '700', cursor: 'pointer', letterSpacing: '1px' }}>CERRAR</button>
                 </div>
+
+                {patientToEdit && (
+                    <PatientForm 
+                        patientToEdit={patientToEdit}
+                        onClose={() => setPatientToEdit(null)}
+                        onSave={() => {
+                            setPatientToEdit(null);
+                            fetchSessions();
+                        }}
+                    />
+                )}
+
+                {summaryPatient && (
+                    <SummaryHCModal 
+                        patient={summaryPatient}
+                        mode="edit"
+                        onClose={() => setSummaryPatient(null)}
+                        onSave={() => {
+                            setSummaryPatient(null);
+                            fetchSessions();
+                        }}
+                    />
+                )}
             </div>
         </div>
     );
