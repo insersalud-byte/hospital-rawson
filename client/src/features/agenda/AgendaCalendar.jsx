@@ -204,23 +204,24 @@ const PatientPanel = ({ patient: initialPatient, onClose, onSaved }) => {
                             background: mode === 'atender' ? '#00e676' : 'rgba(255,255,255,0.07)',
                             color: mode === 'atender' ? '#000' : 'white'
                         }}>🩺 Atender</button>
+                        {/* Tab Resumen HC con lapiz integrado */}
                         <button onClick={() => setMode('resumen_hc')} style={{
                             padding: '8px 16px', borderRadius: '20px', fontWeight: '600', fontSize: '0.85rem',
-                            border: 'none', cursor: 'pointer',
-                            background: mode === 'resumen_hc' ? '#ff9800' : 'rgba(255,255,255,0.07)',
+                            border: mode === 'resumen_hc' ? 'none' : '1px solid rgba(255,152,0,0.3)', cursor: 'pointer',
+                            background: mode === 'resumen_hc' ? '#ff9800' : 'rgba(255,152,0,0.08)',
                             color: 'white', display: 'flex', alignItems: 'center', gap: '6px'
                         }}>📄 Resumen H.C.</button>
                         <button
                             onClick={() => { setMode('resumen_hc'); setShowSummaryModal(true); }}
                             title="Editar Resumen H.C."
                             style={{
-                                padding: '8px 16px', borderRadius: '20px', fontWeight: '700', fontSize: '0.85rem',
+                                padding: '8px 14px', borderRadius: '20px', fontWeight: '700', fontSize: '0.85rem',
                                 border: '2px solid #ff9800', cursor: 'pointer',
-                                background: 'rgba(255,152,0,0.22)',
-                                color: '#ff9800', display: 'flex', alignItems: 'center', gap: '7px',
-                                boxShadow: '0 0 8px rgba(255,152,0,0.3)'
+                                background: 'rgba(255,152,0,0.25)',
+                                color: '#ff9800', display: 'flex', alignItems: 'center', gap: '6px',
+                                boxShadow: '0 0 10px rgba(255,152,0,0.4)',
                             }}
-                        ><Pencil size={15} /> ✏ Editar H.C.</button>
+                        ><Pencil size={14} /> Editar</button>
                     </div>
                 </div>
 
