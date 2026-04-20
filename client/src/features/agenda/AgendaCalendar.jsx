@@ -146,7 +146,7 @@ const PatientPanel = ({ patient: initialPatient, onClose, onSaved }) => {
     return (
         <dialog ref={dialogRef} onCancel={e => { e.preventDefault(); if (!saving) onClose(); }}
             style={{ margin: 'auto', padding: 0, border: 'none', background: 'transparent',
-                     width: '640px', maxWidth: 'calc(100vw - 30px)', maxHeight: '90vh',
+                     width: '720px', maxWidth: 'calc(100vw - 20px)', maxHeight: '90vh',
                      overflowY: 'auto', borderRadius: '20px' }}>
             <div style={{
                 background: '#1a3a5c',
@@ -191,21 +191,21 @@ const PatientPanel = ({ patient: initialPatient, onClose, onSaved }) => {
                     </div>
 
                     {/* Tabs */}
-                    <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
                         <button onClick={() => setMode('history')} style={{
-                            padding: '8px 18px', borderRadius: '20px', fontWeight: '600', fontSize: '0.85rem',
+                            padding: '8px 16px', borderRadius: '20px', fontWeight: '600', fontSize: '0.85rem',
                             border: 'none', cursor: 'pointer',
                             background: mode === 'history' ? 'var(--primary)' : 'rgba(255,255,255,0.07)',
                             color: 'white'
                         }}>📋 Historial</button>
                         <button onClick={() => setMode('atender')} style={{
-                            padding: '8px 18px', borderRadius: '20px', fontWeight: '600', fontSize: '0.85rem',
+                            padding: '8px 16px', borderRadius: '20px', fontWeight: '600', fontSize: '0.85rem',
                             border: 'none', cursor: 'pointer',
                             background: mode === 'atender' ? '#00e676' : 'rgba(255,255,255,0.07)',
                             color: mode === 'atender' ? '#000' : 'white'
                         }}>🩺 Atender</button>
                         <button onClick={() => setMode('resumen_hc')} style={{
-                            padding: '8px 18px', borderRadius: '20px', fontWeight: '600', fontSize: '0.85rem',
+                            padding: '8px 16px', borderRadius: '20px', fontWeight: '600', fontSize: '0.85rem',
                             border: 'none', cursor: 'pointer',
                             background: mode === 'resumen_hc' ? '#ff9800' : 'rgba(255,255,255,0.07)',
                             color: 'white', display: 'flex', alignItems: 'center', gap: '6px'
@@ -214,12 +214,13 @@ const PatientPanel = ({ patient: initialPatient, onClose, onSaved }) => {
                             onClick={() => { setMode('resumen_hc'); setShowSummaryModal(true); }}
                             title="Editar Resumen H.C."
                             style={{
-                                padding: '7px 13px', borderRadius: '20px', fontWeight: '700', fontSize: '0.82rem',
-                                border: '1px solid #ff9800', cursor: 'pointer',
-                                background: 'rgba(255,152,0,0.18)',
-                                color: '#ff9800', display: 'flex', alignItems: 'center', gap: '6px'
+                                padding: '8px 16px', borderRadius: '20px', fontWeight: '700', fontSize: '0.85rem',
+                                border: '2px solid #ff9800', cursor: 'pointer',
+                                background: 'rgba(255,152,0,0.22)',
+                                color: '#ff9800', display: 'flex', alignItems: 'center', gap: '7px',
+                                boxShadow: '0 0 8px rgba(255,152,0,0.3)'
                             }}
-                        ><Pencil size={14} /> Editar H.C.</button>
+                        ><Pencil size={15} /> ✏ Editar H.C.</button>
                     </div>
                 </div>
 
