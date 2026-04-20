@@ -209,17 +209,17 @@ const PatientPanel = ({ patient: initialPatient, onClose, onSaved }) => {
                             border: 'none', cursor: 'pointer',
                             background: mode === 'resumen_hc' ? '#ff9800' : 'rgba(255,255,255,0.07)',
                             color: 'white', display: 'flex', alignItems: 'center', gap: '6px'
-                        }}>📄 Resumen</button>
+                        }}>📄 Resumen H.C.</button>
                         <button
-                            onClick={() => setShowSummaryModal(true)}
+                            onClick={() => { setMode('resumen_hc'); setShowSummaryModal(true); }}
                             title="Editar Resumen H.C."
                             style={{
-                                padding: '8px 12px', borderRadius: '20px', fontWeight: '600', fontSize: '0.85rem',
+                                padding: '7px 13px', borderRadius: '20px', fontWeight: '700', fontSize: '0.82rem',
                                 border: '1px solid #ff9800', cursor: 'pointer',
-                                background: 'rgba(255,152,0,0.15)',
-                                color: '#ff9800', display: 'flex', alignItems: 'center', gap: '5px'
+                                background: 'rgba(255,152,0,0.18)',
+                                color: '#ff9800', display: 'flex', alignItems: 'center', gap: '6px'
                             }}
-                        ><Pencil size={14} /></button>
+                        ><Pencil size={14} /> Editar H.C.</button>
                     </div>
                 </div>
 
@@ -484,14 +484,14 @@ const PatientPanel = ({ patient: initialPatient, onClose, onSaved }) => {
                         onClose={() => setShowSummaryModal(false)}
                         onSave={() => {
                             setShowSummaryModal(false);
-                            // Actualizar localmente el resumen para que se vea el cambio sin cerrar el panel
+                            // Actualizar localmente el resumen sin cerrar el panel del paciente
                             axios.get(`${API_URL}/patients`)
                                 .then(res => {
                                     const p = (Array.isArray(res.data) ? res.data : []).find(p => p.id === patient.id);
                                     if (p) setPatient(p);
                                 })
                                 .catch(() => { });
-                            onSaved(); // Igual notificamos al padre para que la agenda sepa que algo cambió
+                            // NO llamamos onSaved() para que el panel no se cierre
                         }}
                     />
                 )}
