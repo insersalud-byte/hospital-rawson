@@ -817,9 +817,10 @@ const AgendaCalendar = () => {
                 }
             });
 
-            // Incluir todos los estados (programado, asistió, no asistió) para que no desaparezcan al atenderlos
+            // Incluir todos los estados visibles; comparar solo los primeros 10 chars por si Supabase devuelve timestamp
             const daySessions = allSessions.filter(s =>
-                s.fecha === dateStr && s.paciente_id && (s.estado === 'programado' || s.estado === 'asistió' || s.estado === 'no asistió')
+                s.fecha && String(s.fecha).startsWith(dateStr) && s.paciente_id &&
+                (s.estado === 'programado' || s.estado === 'asistió' || s.estado === 'no asistió')
             );
 
             const newApt = {};
@@ -870,7 +871,10 @@ const AgendaCalendar = () => {
             list.push(appointments[`${hora}-${i}`]);
             i++;
         }
-        return list;
+        return list.sort((a, b) => {
+            const ap = (a.apellido || '').localeCompare(b.apellido || '', 'es', { sensitivity: 'base' });
+            return ap !== 0 ? ap : (a.nombre || '').localeCompare(b.nombre || '', 'es', { sensitivity: 'base' });
+        });
     };
     const totalHoy = [...new Set(Object.values(appointments).map(p => p.id))].length;
 
@@ -933,11 +937,11 @@ const AgendaCalendar = () => {
                                             <button key={i} onClick={e => { e.stopPropagation(); setActivePatient(p); }}
                                                 className={isAttended || isMissed ? "" : "vibrant-gradient"}
                                                 style={{
-                                                    padding: '7px 16px', borderRadius: '20px', fontWeight: '600',
+                                                    padding: '7px 16px', borderRadius: '20px', fontWeight: '700',
                                                     fontSize: '0.85rem', border: isAttended ? '2px solid #00e676' : isMissed ? '2px solid #ff5252' : 'none',
                                                     cursor: 'pointer', color: 'white', outline: 'none',
-                                                    background: isAttended ? 'rgba(0,230,118,0.15)' : isMissed ? 'rgba(255,82,82,0.15)' : undefined,
-                                                    opacity: isAttended || isMissed ? 0.8 : 1,
+                                                    background: isAttended ? 'rgba(0,230,118,0.35)' : isMissed ? 'rgba(255,82,82,0.35)' : undefined,
+                                                    opacity: 1,
                                                     display: 'flex', alignItems: 'center', gap: '5px'
                                                 }}>
                                                 {isAttended ? '✅ ' : isMissed ? '❌ ' : '👤 '}
