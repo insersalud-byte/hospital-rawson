@@ -818,17 +818,27 @@ const AgendaCalendar = () => {
             });
 
             // Incluir todos los estados visibles; comparar solo los primeros 10 chars por si Supabase devuelve timestamp
+            const patientsData = Array.isArray(resPatients.data) ? resPatients.data : [];
+
             const daySessions = allSessions.filter(s =>
                 s.fecha && String(s.fecha).startsWith(dateStr) && s.paciente_id &&
                 (s.estado === 'programado' || s.estado === 'asistió' || s.estado === 'no asistió')
             );
+
+            // Ordenar alfabéticamente por apellido+nombre antes de construir appointments
+            daySessions.sort((a, b) => {
+                const pa = patientsData.find(p => String(p.id) === String(a.paciente_id));
+                const pb = patientsData.find(p => String(p.id) === String(b.paciente_id));
+                const cmp = (pa?.apellido || '').localeCompare(pb?.apellido || '', 'es', { sensitivity: 'base' });
+                return cmp !== 0 ? cmp : (pa?.nombre || '').localeCompare(pb?.nombre || '', 'es', { sensitivity: 'base' });
+            });
 
             const newApt = {};
             daySessions.forEach(session => {
                 const horaFull = session.hora || '08:00';
                 const hora = horaFull.substring(0, 5);
                 if (!validSlots.has(hora)) return;
-                const patient = (Array.isArray(resPatients.data) ? resPatients.data : []).find(p => String(p.id) === String(session.paciente_id));
+                const patient = patientsData.find(p => String(p.id) === String(session.paciente_id));
                 if (!patient) return;
 
                 // Buscar el siguiente slot libre (sin restricción de cupo)
@@ -961,7 +971,7 @@ const AgendaCalendar = () => {
                                                     border: (p.missedCount >= 2) ? '1px solid #ff5252' : 'none'
                                                 }}>
                                                     {(p.sessionCount || 0) + (p.missedCount || 0)}
-                                                </span>
+SIN VERCE EL ORDEN ALFABETICO                                                 </span>
                                             </button>
                                         );
                                     })}
