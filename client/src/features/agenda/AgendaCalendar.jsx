@@ -135,8 +135,8 @@ const PatientPanel = ({ patient: initialPatient, onClose, onSaved }) => {
     };
 
     const estadoColor = (estado) => {
-        if (estado === 'asistió') return '#00e676';
-        if (estado === 'no asistió') return '#ff5252';
+        if ((estado || '').startsWith('asisti')) return '#00e676';
+        if ((estado || '').startsWith('no asisti')) return '#ff5252';
         return 'var(--text-muted)';
     };
 
@@ -534,8 +534,8 @@ const UpcomingAppointmentsModal = ({ onClose }) => {
                     if (s.paciente_id) {
                         const pid = String(s.paciente_id);
                         if (!counts[pid]) counts[pid] = { assisted: 0, missed: 0 };
-                        if (s.estado === 'asistió') counts[pid].assisted++;
-                        else if (s.estado === 'no asistió') counts[pid].missed++;
+                        if ((s.estado || '').startsWith('asisti')) counts[pid].assisted++;
+                        else if ((s.estado || '').startsWith('no asisti')) counts[pid].missed++;
                     }
                 });
                 setSessionCounts(counts);
@@ -806,14 +806,19 @@ const AgendaCalendar = () => {
 
             const allSessions = Array.isArray(resSessions.data) ? resSessions.data : [];
 
+            // Helpers para comparar estados con encoding seguro (ó puede corromperse)
+            const esAsistio = (e) => (e || '').startsWith('asisti');
+            const esNoAsistio = (e) => (e || '').startsWith('no asisti');
+            const esVisible = (e) => e === 'programado' || esAsistio(e) || esNoAsistio(e);
+
             // Contar asistencias y faltas por paciente
             const sessionData = {};
             allSessions.forEach(s => {
                 if (s.paciente_id) {
                     const pid = String(s.paciente_id);
                     if (!sessionData[pid]) sessionData[pid] = { assisted: 0, missed: 0 };
-                    if (s.estado === 'asistió') sessionData[pid].assisted++;
-                    else if (s.estado === 'no asistió') sessionData[pid].missed++;
+                    if (esAsistio(s.estado)) sessionData[pid].assisted++;
+                    else if (esNoAsistio(s.estado)) sessionData[pid].missed++;
                 }
             });
 
@@ -830,12 +835,10 @@ const AgendaCalendar = () => {
                 }
             });
 
-            // Incluir todos los estados visibles; comparar solo los primeros 10 chars por si Supabase devuelve timestamp
             const patientsData = Array.isArray(resPatients.data) ? resPatients.data : [];
 
             const daySessions = allSessions.filter(s =>
-                s.fecha && String(s.fecha).startsWith(dateStr) && s.paciente_id &&
-                (s.estado === 'programado' || s.estado === 'asistió' || s.estado === 'no asistió')
+                s.fecha && String(s.fecha).startsWith(dateStr) && s.paciente_id && esVisible(s.estado)
             );
 
             // Ordenar alfabéticamente por apellido+nombre antes de construir appointments
@@ -954,8 +957,8 @@ const AgendaCalendar = () => {
                                 {!ocupado
                                     ? <span style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.88rem' }}>Sin pacientes</span>
                                     : patients.map((p, i) => {
-                                        const isAttended = p.estado === 'asistió';
-                                        const isMissed = p.estado === 'no asistió';
+                                        const isAttended = (p.estado || '').startsWith('asisti');
+                                        const isMissed = (p.estado || '').startsWith('no asisti');
                                         const isProgramado = p.estado === 'programado';
                                         const isLast = isProgramado && p.remainingSessions === 1;
                                         const isPenultimate = isProgramado && p.remainingSessions === 2;
