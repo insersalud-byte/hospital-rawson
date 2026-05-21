@@ -969,24 +969,22 @@ const AgendaCalendar = () => {
                                             btnBg = 'rgba(255,82,82,0.35)';
                                             btnBorder = '2px solid #ff5252';
                                             btnClass = '';
-                                        } else if (isLast) {
-                                            btnBg = 'rgba(255,140,0,0.45)';
-                                            btnBorder = '2px solid #ff8c00';
-                                            btnClass = '';
-                                        } else if (isPenultimate) {
-                                            btnBg = 'rgba(255,220,0,0.35)';
-                                            btnBorder = '2px solid #ffd700';
-                                            btnClass = '';
                                         } else {
                                             btnBg = undefined;
                                             btnBorder = 'none';
                                             btnClass = 'vibrant-gradient';
                                         }
 
-                                        const sessionLabel = isLast
-                                            ? '🔴 ULTIMA SESION'
+                                        const nameColor = isLast
+                                            ? '#ff8c00'
                                             : isPenultimate
-                                            ? '🟡 PENULTIMA'
+                                            ? '#ffd700'
+                                            : 'white';
+
+                                        const sessionLabel = isLast
+                                            ? 'ULTIMA SESION'
+                                            : isPenultimate
+                                            ? 'PENULTIMA'
                                             : null;
 
                                         return (
@@ -996,17 +994,17 @@ const AgendaCalendar = () => {
                                                 style={{
                                                     padding: '7px 16px', borderRadius: '20px', fontWeight: '700',
                                                     fontSize: '0.85rem', border: btnBorder,
-                                                    cursor: 'pointer', color: isLast || isPenultimate ? '#000' : 'white', outline: 'none',
+                                                    cursor: 'pointer', color: 'white', outline: 'none',
                                                     background: btnBg,
                                                     opacity: 1,
                                                     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px',
                                                 }}>
-                                                <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: '5px', color: nameColor }}>
                                                 {isAttended ? '✅ ' : isMissed ? '❌ ' : '👤 '}
                                                 {p.nombre} {p.apellido}
                                                 </span>
                                                 {sessionLabel && (
-                                                    <span style={{ fontSize: '0.65rem', fontWeight: '800', letterSpacing: '0.3px' }}>
+                                                    <span style={{ fontSize: '0.62rem', fontWeight: '800', letterSpacing: '0.5px', color: nameColor }}>
                                                         {sessionLabel}
                                                     </span>
                                                 )}

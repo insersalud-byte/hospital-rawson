@@ -317,7 +317,7 @@ export const PatientForm = ({ onClose, onSave, patientToEdit, existingDoctors = 
                     const turnosTexto = selectedDates
                         .map(d => `📅 ${format(d, "EEEE d/MM", { locale: es })} a las ${indicacionPresencia} hs`)
                         .join('\n');
-                    const mensaje = `¡Hola ${formData.nombre}! 👋 Te confirmamos tus turnos de Kinesiología en Hospital Rawson:\n\n${turnosTexto}\n\n*Por favor presentarse a las ${indicacionPresencia} hs.*\n\nTotal: ${sesionesNuevas} sesión${sesionesNuevas !== 1 ? 'es' : ''} programada${sesionesNuevas !== 1 ? 's' : ''}.\n\nAnte cualquier duda contactanos. ¡Te esperamos! 🏥\n\nPOR FAVOR PRESENTARSE 5 MINUTOS ANTES.\nNOTA: AUSENTE SIN AVISO NO SE RECUPERA LA SESION. SOLO SE ACEPTA 2 INASISTENCIAS SINO PIERDE LA TOTALIDAD DE LOS TURNOS.`;
+                    const mensaje = `¡Hola ${formData.nombre}! 👋 Te confirmamos tus turnos de Kinesiología en Hospital Rawson:\n\n${turnosTexto}\n\n*Por favor presentarse a las ${indicacionPresencia} hs.*\n\nTotal: ${sesionesNuevas} sesión${sesionesNuevas !== 1 ? 'es' : ''} programada${sesionesNuevas !== 1 ? 's' : ''}.\n\nAnte cualquier duda contactanos. ¡Te esperamos! 🏥\n\nPOR FAVOR PRESENTARSE 5 MINUTOS ANTES.\n*NOTA: (AUSENTE SIN AVISO NO SE RECUPERA LA SESION) SOLO SE ACEPTA DOS INASISTENCIAS CON AVISO SINO PIERDE LA TOTALIDAD DE LOS TURNOS.*`;
                     setWaLink(`https://wa.me/${num}?text=${encodeURIComponent(mensaje)}`);
                 }
             }
