@@ -140,7 +140,8 @@ async function getSesionesByPaciente(pacienteId) {
 async function getSesiones() {
     const { data, error } = await supabase
         .from('rawson_sesiones')
-        .select('*, rawson_pacientes(nombre, apellido)');
+        .select('*, rawson_pacientes(nombre, apellido)')
+        .limit(10000);
     check(error, 'getSesiones');
     return data.map(s => ({
         ...s,
