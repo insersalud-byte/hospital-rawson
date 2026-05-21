@@ -27,12 +27,21 @@ module.exports = async (req, res) => {
         if (req.method === 'GET') {
             res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
             res.setHeader('Pragma', 'no-cache');
-            const { data, error } = await supabase
-                .from('rawson_sesiones')
-                .select('*, paciente:rawson_pacientes(nombre, apellido)')
-                .limit(10000);
-            if (error) throw error;
-            return res.json(data.map(s => ({ ...s, nombre: s.paciente?.nombre, apellido: s.paciente?.apellido })));
+            // Supabase max_rows es 1000 — paginamos para traer todas
+            const PAGE = 1000;
+            let allData = [];
+            let from = 0;
+            while (true) {
+                const { data, error } = await supabase
+                    .from('rawson_sesiones')
+                    .select('*, paciente:rawson_pacientes(nombre, apellido)')
+                    .range(from, from + PAGE - 1);
+                if (error) throw error;
+                allData = allData.concat(data);
+                if (data.length < PAGE) break;
+                from += PAGE;
+            }
+            return res.json(allData.map(s => ({ ...s, nombre: s.paciente?.nombre, apellido: s.paciente?.apellido })));
         }
 
         // DELETE /api/sessions/:id
