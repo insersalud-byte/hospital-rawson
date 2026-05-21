@@ -25,6 +25,8 @@ module.exports = async (req, res) => {
 
         // GET /api/sessions
         if (req.method === 'GET') {
+            res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+            res.setHeader('Pragma', 'no-cache');
             const { data, error } = await supabase
                 .from('rawson_sesiones')
                 .select('*, paciente:rawson_pacientes(nombre, apellido)')
