@@ -27,7 +27,8 @@ module.exports = async (req, res) => {
         if (req.method === 'GET') {
             const { data, error } = await supabase
                 .from('rawson_sesiones')
-                .select('*, paciente:rawson_pacientes(nombre, apellido)');
+                .select('*, paciente:rawson_pacientes(nombre, apellido)')
+                .limit(10000);
             if (error) throw error;
             return res.json(data.map(s => ({ ...s, nombre: s.paciente?.nombre, apellido: s.paciente?.apellido })));
         }
