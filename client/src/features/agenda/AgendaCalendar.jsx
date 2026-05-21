@@ -817,6 +817,19 @@ const AgendaCalendar = () => {
                 }
             });
 
+            // Contar sesiones programadas futuras (incluyendo hoy) por paciente
+            const todayStart = startOfDay(new Date());
+            const remainingData = {};
+            allSessions.forEach(s => {
+                if (s.paciente_id && s.estado === 'programado' && s.fecha) {
+                    const d = new Date(s.fecha + 'T00:00:00');
+                    if (d >= todayStart) {
+                        const pid = String(s.paciente_id);
+                        remainingData[pid] = (remainingData[pid] || 0) + 1;
+                    }
+                }
+            });
+
             // Incluir todos los estados visibles; comparar solo los primeros 10 chars por si Supabase devuelve timestamp
             const patientsData = Array.isArray(resPatients.data) ? resPatients.data : [];
 
@@ -845,13 +858,14 @@ const AgendaCalendar = () => {
                 let count = 0;
                 while (newApt[`${hora}-${count}`]) { count++; }
 
-                newApt[`${hora}-${count}`] = { 
-                    ...patient, 
-                    sessionId: session.id, 
-                    hora, 
-                    estado: session.estado, 
+                newApt[`${hora}-${count}`] = {
+                    ...patient,
+                    sessionId: session.id,
+                    hora,
+                    estado: session.estado,
                     sessionCount: sessionData[String(patient.id)]?.assisted || 0,
-                    missedCount: sessionData[String(patient.id)]?.missed || 0 
+                    missedCount: sessionData[String(patient.id)]?.missed || 0,
+                    remainingSessions: remainingData[String(patient.id)] || 0
                 };
             });
             setAppointments(newApt);
@@ -942,26 +956,66 @@ const AgendaCalendar = () => {
                                     : patients.map((p, i) => {
                                         const isAttended = p.estado === 'asistió';
                                         const isMissed = p.estado === 'no asistió';
-                                        
+                                        const isProgramado = p.estado === 'programado';
+                                        const isLast = isProgramado && p.remainingSessions === 1;
+                                        const isPenultimate = isProgramado && p.remainingSessions === 2;
+
+                                        let btnBg, btnBorder, btnClass;
+                                        if (isAttended) {
+                                            btnBg = 'rgba(0,230,118,0.35)';
+                                            btnBorder = '2px solid #00e676';
+                                            btnClass = '';
+                                        } else if (isMissed) {
+                                            btnBg = 'rgba(255,82,82,0.35)';
+                                            btnBorder = '2px solid #ff5252';
+                                            btnClass = '';
+                                        } else if (isLast) {
+                                            btnBg = 'rgba(255,140,0,0.45)';
+                                            btnBorder = '2px solid #ff8c00';
+                                            btnClass = '';
+                                        } else if (isPenultimate) {
+                                            btnBg = 'rgba(255,220,0,0.35)';
+                                            btnBorder = '2px solid #ffd700';
+                                            btnClass = '';
+                                        } else {
+                                            btnBg = undefined;
+                                            btnBorder = 'none';
+                                            btnClass = 'vibrant-gradient';
+                                        }
+
+                                        const sessionLabel = isLast
+                                            ? '🔴 ULTIMA SESION'
+                                            : isPenultimate
+                                            ? '🟡 PENULTIMA'
+                                            : null;
+
                                         return (
                                             <button key={i} onClick={e => { e.stopPropagation(); setActivePatient(p); }}
-                                                className={isAttended || isMissed ? "" : "vibrant-gradient"}
+                                                className={btnClass}
+                                                title={isLast ? 'Ultima sesion del paciente' : isPenultimate ? 'Penultima sesion — mañana es la ultima' : undefined}
                                                 style={{
                                                     padding: '7px 16px', borderRadius: '20px', fontWeight: '700',
-                                                    fontSize: '0.85rem', border: isAttended ? '2px solid #00e676' : isMissed ? '2px solid #ff5252' : 'none',
-                                                    cursor: 'pointer', color: 'white', outline: 'none',
-                                                    background: isAttended ? 'rgba(0,230,118,0.35)' : isMissed ? 'rgba(255,82,82,0.35)' : undefined,
+                                                    fontSize: '0.85rem', border: btnBorder,
+                                                    cursor: 'pointer', color: isLast || isPenultimate ? '#000' : 'white', outline: 'none',
+                                                    background: btnBg,
                                                     opacity: 1,
-                                                    display: 'flex', alignItems: 'center', gap: '5px'
+                                                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px',
                                                 }}>
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                                                 {isAttended ? '✅ ' : isMissed ? '❌ ' : '👤 '}
                                                 {p.nombre} {p.apellido}
-                                                <span style={{ 
-                                                    marginLeft: '6px', 
-                                                    fontSize: '0.78rem', 
-                                                    fontWeight: '800', 
-                                                    background: (p.missedCount >= 2) ? 'rgba(255,82,82,0.4)' : 'rgba(255,255,255,0.25)', 
-                                                    color: (p.missedCount >= 2) ? '#ff5252' : 'white',
+                                                </span>
+                                                {sessionLabel && (
+                                                    <span style={{ fontSize: '0.65rem', fontWeight: '800', letterSpacing: '0.3px' }}>
+                                                        {sessionLabel}
+                                                    </span>
+                                                )}
+                                                <span style={{
+                                                    marginLeft: '6px',
+                                                    fontSize: '0.78rem',
+                                                    fontWeight: '800',
+                                                    background: (p.missedCount >= 2) ? 'rgba(255,82,82,0.4)' : 'rgba(0,0,0,0.2)',
+                                                    color: (p.missedCount >= 2) ? '#ff5252' : (isLast || isPenultimate) ? '#000' : 'white',
                                                     minWidth: '22px',
                                                     height: '22px',
                                                     display: 'flex',
@@ -971,7 +1025,7 @@ const AgendaCalendar = () => {
                                                     border: (p.missedCount >= 2) ? '1px solid #ff5252' : 'none'
                                                 }}>
                                                     {(p.sessionCount || 0) + (p.missedCount || 0)}
-SIN VERCE EL ORDEN ALFABETICO                                                 </span>
+                                                </span>
                                             </button>
                                         );
                                     })}
