@@ -8,6 +8,45 @@ import { PatientForm, SummaryHCModal } from '../patients/PatientForm';
 
 const API_URL = import.meta.env.MODE === 'development' ? 'http://localhost:3005/api' : '/api';
 
+// Comparadores de estado con encoding seguro (la "ó" puede corromperse)
+const esAsistio = (e) => (e || '').startsWith('asisti');
+const esNoAsistio = (e) => (e || '').startsWith('no asisti');
+
+// ─── Conteo de sesiones del CICLO ACTUAL ──────────────────────────────────────
+// Un "ciclo" es la última tanda de sesiones cargada al paciente. Cuando un
+// paciente termina sus sesiones y se le dan nuevas, esas se crean con un
+// created_at posterior (semanas después que el lote anterior), aunque las fechas
+// agendadas sean cercanas. Por eso el contador arranca en 0 el primer día de la
+// tanda nueva: sólo contamos las completadas dentro del lote más reciente.
+const CYCLE_BATCH_WINDOW_MS = 2 * 24 * 60 * 60 * 1000; // 2 días de tolerancia dentro de un mismo lote
+
+const toTime = (v) => {
+    if (!v) return 0;
+    const t = new Date(v).getTime();
+    return Number.isFinite(t) ? t : 0;
+};
+
+// Devuelve { assisted, missed } contando sólo las sesiones completadas del ciclo actual.
+const cycleCounts = (patientSessions) => {
+    const completed = patientSessions.filter(s => esAsistio(s.estado) || esNoAsistio(s.estado));
+    const times = patientSessions.map(s => toTime(s.created_at)).filter(t => t > 0);
+
+    // Sin created_at confiable: fallback al histórico total (comportamiento anterior)
+    if (times.length === 0) {
+        return {
+            assisted: completed.filter(s => esAsistio(s.estado)).length,
+            missed: completed.filter(s => esNoAsistio(s.estado)).length,
+        };
+    }
+
+    const cycleStart = Math.max(...times) - CYCLE_BATCH_WINDOW_MS;
+    const inCycle = completed.filter(s => toTime(s.created_at) >= cycleStart);
+    return {
+        assisted: inCycle.filter(s => esAsistio(s.estado)).length,
+        missed: inCycle.filter(s => esNoAsistio(s.estado)).length,
+    };
+};
+
 // ─── Historial + Panel de Atención ────────────────────────────────────────────
 const PatientPanel = ({ patient: initialPatient, onClose, onSaved }) => {
     const { user } = useAuth();
@@ -46,7 +85,7 @@ const PatientPanel = ({ patient: initialPatient, onClose, onSaved }) => {
                     if (t <= 1) {
                         clearInterval(timerRef.current);
                         setTimerActive(false);
-                        alert(`⏰ ¡Se acabaron los 45 minutos de la sesión de ${patient.nombre} ${patient.apellido}!`);
+                        alert(`⏰ ¡Se acabaron los 45 minutos de la sesión de ${patient.apellido} ${patient.nombre}!`);
                         return 0;
                     }
                     return t - 1;
@@ -156,7 +195,7 @@ const PatientPanel = ({ patient: initialPatient, onClose, onSaved }) => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
                             <h2 style={{ fontSize: '1.3rem', marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                👤 {patient.nombre} {patient.apellido}
+                                👤 {patient.apellido} {patient.nombre}
                                 <button 
                                     onClick={() => setShowEditForm(true)}
                                     style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid var(--border)', color: 'white', padding: '5px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
@@ -167,6 +206,9 @@ const PatientPanel = ({ patient: initialPatient, onClose, onSaved }) => {
                             </h2>
                             <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>
                                 HC: {patient.historia_clinica || '—'} · DNI: {patient.dni || 'Sin DNI'}
+                                {patient.patologia && (
+                                    <> · <span style={{ color: '#ffb74d', fontWeight: '600' }}>🩺 Dx: {patient.patologia}</span></>
+                                )}
                             </p>
                         </div>
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -528,15 +570,17 @@ const UpcomingAppointmentsModal = ({ onClose }) => {
                     .filter(s => s.estado === 'programado' && new Date(s.fecha + 'T00:00:00') >= today)
                     .sort((a,b) => new Date(a.fecha + 'T' + a.hora) - new Date(b.fecha + 'T' + b.hora));
                 setUpcoming(list);
-                // Contar sesiones (asistió + no asistió) por paciente
-                const counts = {};
+                // Contar sesiones del ciclo actual (asistió + no asistió) por paciente
+                const byPatient = {};
                 all.forEach(s => {
                     if (s.paciente_id) {
                         const pid = String(s.paciente_id);
-                        if (!counts[pid]) counts[pid] = { assisted: 0, missed: 0 };
-                        if ((s.estado || '').startsWith('asisti')) counts[pid].assisted++;
-                        else if ((s.estado || '').startsWith('no asisti')) counts[pid].missed++;
+                        (byPatient[pid] = byPatient[pid] || []).push(s);
                     }
+                });
+                const counts = {};
+                Object.entries(byPatient).forEach(([pid, sess]) => {
+                    counts[pid] = cycleCounts(sess);
                 });
                 setSessionCounts(counts);
             })
@@ -594,8 +638,12 @@ const UpcomingAppointmentsModal = ({ onClose }) => {
             </div>
         );
 
-        const morning = dayAppointments.filter(s => parseInt(s.hora.split(':')[0], 10) < 13);
-        const afternoon = dayAppointments.filter(s => parseInt(s.hora.split(':')[0], 10) >= 13);
+        const sortByApellido = (a, b) => {
+            const cmp = (a.apellido || '').localeCompare(b.apellido || '', 'es', { sensitivity: 'base' });
+            return cmp !== 0 ? cmp : (a.nombre || '').localeCompare(b.nombre || '', 'es', { sensitivity: 'base' });
+        };
+        const morning = dayAppointments.filter(s => parseInt(s.hora.split(':')[0], 10) < 13).sort(sortByApellido);
+        const afternoon = dayAppointments.filter(s => parseInt(s.hora.split(':')[0], 10) >= 13).sort(sortByApellido);
 
         const renderTurnItem = (s, idx) => (
             <div key={idx} style={{
@@ -610,7 +658,7 @@ const UpcomingAppointmentsModal = ({ onClose }) => {
                 transition: 'background 0.15s',
             }}>
                 <span style={{ fontWeight: '700', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    👤 {s.nombre} {s.apellido}
+                    👤 {s.apellido} {s.nombre}
                     <span style={{ 
                         fontSize: '0.75rem', 
                         fontWeight: '800', 
@@ -806,20 +854,20 @@ const AgendaCalendar = () => {
 
             const allSessions = Array.isArray(resSessions.data) ? resSessions.data : [];
 
-            // Helpers para comparar estados con encoding seguro (ó puede corromperse)
-            const esAsistio = (e) => (e || '').startsWith('asisti');
-            const esNoAsistio = (e) => (e || '').startsWith('no asisti');
+            // Helper de visibilidad (esAsistio / esNoAsistio están a nivel de módulo)
             const esVisible = (e) => e === 'programado' || esAsistio(e) || esNoAsistio(e);
 
-            // Contar asistencias y faltas por paciente
-            const sessionData = {};
+            // Contar asistencias y faltas del CICLO ACTUAL por paciente
+            const byPatient = {};
             allSessions.forEach(s => {
                 if (s.paciente_id) {
                     const pid = String(s.paciente_id);
-                    if (!sessionData[pid]) sessionData[pid] = { assisted: 0, missed: 0 };
-                    if (esAsistio(s.estado)) sessionData[pid].assisted++;
-                    else if (esNoAsistio(s.estado)) sessionData[pid].missed++;
+                    (byPatient[pid] = byPatient[pid] || []).push(s);
                 }
+            });
+            const sessionData = {};
+            Object.entries(byPatient).forEach(([pid, sess]) => {
+                sessionData[pid] = cycleCounts(sess);
             });
 
             // Contar sesiones programadas futuras (incluyendo hoy) por paciente
@@ -1004,7 +1052,7 @@ const AgendaCalendar = () => {
                                                 }}>
                                                 <span style={{ display: 'flex', alignItems: 'center', gap: '5px', color: nameColor }}>
                                                 {isAttended ? '✅ ' : isMissed ? '❌ ' : '👤 '}
-                                                {p.nombre} {p.apellido}
+                                                {p.apellido} {p.nombre}
                                                 </span>
                                                 {sessionLabel && (
                                                     <span style={{ fontSize: '0.62rem', fontWeight: '800', letterSpacing: '0.5px', color: nameColor }}>
