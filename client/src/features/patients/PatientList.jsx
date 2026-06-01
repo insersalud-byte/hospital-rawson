@@ -7,6 +7,7 @@ import ClinicalSemaphore from '../../components/ui/ClinicalSemaphore';
 import CustomSelect from '../../components/ui/CustomSelect';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, isBefore, startOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { jsPDF } from 'jspdf';
 
 const API_URL = import.meta.env.MODE === 'development' ? 'http://localhost:3005/api' : '/api';
 
@@ -34,6 +35,16 @@ const PatientHistory = ({ patient }) => {
     const hoy = startOfDay(new Date());
     const faltantes = sessions.filter(s => s.estado === 'programado' && (new Date(s.fecha + 'T00:00:00') >= hoy));
     const faltadas = sessions.filter(s => s.estado === 'no asistió');
+
+    // Sumatoria anual: todas las sesiones realizadas en el año (asistió + no asistió),
+    // acumulando todas las tandas. (En la agenda el globito es por tanda; acá es el total del año.)
+    const anioActual = new Date().getFullYear();
+    const realizadasAnio = sessions.filter(s => {
+        if (!s.fecha) return false;
+        const yr = parseInt(String(s.fecha).slice(0, 4), 10);
+        const e = s.estado || '';
+        return yr === anioActual && (e.startsWith('asisti') || e.startsWith('no asisti'));
+    }).length;
 
     // Obtener todos los nombres de tratamientos únicos
     const tratamientos = [...new Set(asistidas.flatMap(s =>
@@ -74,9 +85,9 @@ const PatientHistory = ({ patient }) => {
                             <p style={{ color: 'var(--text-muted)', fontSize: '0.65rem', marginBottom: '4px' }}>PRÓXIMAS</p>
                             <p style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--primary)' }}>{faltantes.length}</p>
                         </div>
-                        <div style={{ background: 'rgba(255,255,255,0.06)', padding: '8px', borderRadius: '8px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.08)' }}>
-                            <p style={{ color: 'var(--text-muted)', fontSize: '0.65rem', marginBottom: '4px' }}>HISTORIAL</p>
-                            <p style={{ fontSize: '1.2rem', fontWeight: '800', color: 'white' }}>{sessions.length}</p>
+                        <div title={`Suma de todas las sesiones realizadas (asistió + faltó) en ${anioActual}`} style={{ background: 'rgba(255,255,255,0.06)', padding: '8px', borderRadius: '8px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.08)' }}>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.65rem', marginBottom: '4px' }}>HISTORIAL {anioActual}</p>
+                            <p style={{ fontSize: '1.2rem', fontWeight: '800', color: 'white' }}>{realizadasAnio}</p>
                         </div>
                     </div>
 
@@ -383,6 +394,88 @@ const PatientList = () => {
 
     const [expandedHistoryId, setExpandedHistoryId] = useState(null);
 
+    const generateCertificate = async (patient) => {
+        try {
+            const res = await axios.get(`${API_URL}/sessions/patient/${patient.id}`);
+            const sessions = Array.isArray(res.data) ? res.data : [];
+            const attended = sessions.filter(s => (s.estado || '').startsWith('asisti'));
+            const sessionNumber = attended.length;
+            const today = new Date();
+            const dateStr = format(today, "d 'de' MMMM 'de' yyyy", { locale: es });
+
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.src = '/membrete-rawson.png';
+            await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; });
+
+            const cropL = Math.round(img.naturalWidth * 0.22778);
+            const cropH = Math.round(img.naturalHeight * 0.11348);
+            const cropW = img.naturalWidth - cropL;
+            const canvas = document.createElement('canvas');
+            canvas.width = cropW;
+            canvas.height = cropH;
+            canvas.getContext('2d').drawImage(img, cropL, 0, cropW, cropH, 0, 0, cropW, cropH);
+            const headerDataUrl = canvas.toDataURL('image/png');
+
+            const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+
+            const pageW = 210;
+            const headerRatio = cropH / cropW;
+            const imgW = 170;
+            const imgH = imgW * headerRatio;
+            doc.addImage(headerDataUrl, 'PNG', (pageW - imgW) / 2, 12, imgW, imgH);
+
+            let y = 12 + imgH + 30;
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(22);
+            doc.text('CERTIFICADO', pageW / 2, y, { align: 'center' });
+            const titleW = doc.getTextWidth('CERTIFICADO');
+            doc.setLineWidth(0.4);
+            doc.line((pageW - titleW) / 2, y + 1.5, (pageW + titleW) / 2, y + 1.5);
+
+            y += 25;
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(13);
+            const margin = 25;
+            const textW = pageW - margin * 2;
+
+            const bodyText = `      Dejo constancia que el/la paciente ${patient.nombre.toUpperCase()} ${patient.apellido.toUpperCase()}, DNI ${patient.dni || 'S/D'}, ha asistido a la sesión número ${sessionNumber} para el tratamiento fisiokinesico de diagnóstico ${patient.patologia || 'S/D'} en esta institución.`;
+            const bodyLines = doc.splitTextToSize(bodyText, textW);
+            doc.text(bodyLines, margin, y);
+            y += bodyLines.length * 7 + 10;
+
+            const extText = '      Se extiende el presente para ser presentado ante quien corresponda.';
+            const extLines = doc.splitTextToSize(extText, textW);
+            doc.text(extLines, margin, y);
+            y += extLines.length * 7 + 25;
+
+            doc.setFontSize(12);
+            doc.text(`Córdoba, ${dateStr}`, pageW - margin, y, { align: 'right' });
+
+            y += 50;
+            doc.setLineWidth(0.3);
+            doc.line(pageW / 2 - 35, y, pageW / 2 + 35, y);
+            doc.setFontSize(10);
+            doc.setTextColor(100);
+            doc.text('Firma y Sello', pageW / 2, y + 6, { align: 'center' });
+
+            doc.setLineWidth(0.3);
+            doc.setDrawColor(80);
+            doc.line(margin, 272, pageW - margin, 272);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(8);
+            doc.setTextColor(50);
+            doc.text('Servicio de Kinesiología y Fisioterapia - Hospital Rawson', pageW / 2, 276, { align: 'center' });
+            doc.text('Bajada Pucará 2025 - Bº Crisol – Córdoba Capital', pageW / 2, 280, { align: 'center' });
+            doc.text('WhatsApp: 351-8922269', pageW / 2, 284, { align: 'center' });
+
+            doc.save(`Certificado_${patient.apellido}_${patient.nombre}.pdf`);
+        } catch (err) {
+            console.error('Error generando certificado:', err);
+            alert('Error al generar el certificado.');
+        }
+    };
+
     return (
         <div className="patients-container">
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '30px' }}>
@@ -433,6 +526,11 @@ const PatientList = () => {
                                     style={{ display: 'flex', alignItems: 'center', gap: '6px', background: expandedHistoryId === patient.id ? 'var(--primary)' : 'rgba(255,255,255,0.08)', border: '1px solid var(--border)', color: 'white', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}
                                     title="Ver historial y estadísticas">
                                     📋 Historial
+                                </button>
+                                <button onClick={() => generateCertificate(patient)}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0,200,83,0.12)', border: '1px solid #00c853', color: '#00c853', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '700' }}
+                                    title="Generar Certificado de Asistencia">
+                                    📜 Certificado
                                 </button>
                                 {isAdmin && (
                                     <>
