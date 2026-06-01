@@ -14,6 +14,7 @@ Cambios solo-docs (CLAUDE.md, README) saltan el paso 2.
 - Hosting: Vercel conectado al repo. **Push a `master` = deploy automatico** (Vercel buildea solo).
 - `dist/` y `client/dist/` estan en `.gitignore`: NO se commitean, Vercel los genera.
 - Build command (raiz package.json): `cd client && npx vite build --outDir ../dist`.
+- CRITICO: Vercel instala dependencias desde el `package.json` de la RAIZ (no hay lock raiz; corre `npm install` ahi). Toda dependencia nueva que use el cliente (ej. `jspdf`) DEBE agregarse TAMBIEN al `package.json` RAIZ y commitearse, sino el build de Vercel falla con "Rollup failed to resolve import" aunque compile local (local usa client/node_modules). El control pre-deploy debe verificar deploys ERROR en Vercel via MCP, no solo el build local.
 - Flujo: editar `client/src/**` o `api/**` -> `cd client && npm run build` para verificar que compila -> `git add` (solo fuente, no dist) -> commit -> `git push origin master`. Avisar Ctrl+F5 por cache.
 - Verificar local opcional: `cd client && npm run build` (Vite 5). Backend serverless en `api/*.js` (Vercel functions), data en Supabase.
 
