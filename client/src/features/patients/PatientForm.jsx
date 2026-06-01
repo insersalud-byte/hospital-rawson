@@ -10,7 +10,7 @@ const API_URL = import.meta.env.MODE === 'development' ? 'http://localhost:3005/
 
 // ─── Feriados y asuetos (MM-DD recurrentes) ───────────────────────────────────
 const FERIADOS_FIJOS = [
-    '01-01', '03-24', '04-02', '05-01', '05-24', '05-25', '06-20', '07-09', '10-12', '11-20', '12-08', '12-25',
+    '01-01', '03-24', '04-02', '05-01', '05-24', '05-25', '06-20', '07-09', '07-10', '08-17', '10-12', '11-20', '12-08', '12-25',
 ];
 
 const labelStyle = { fontSize: '0.73rem', fontWeight: '700', letterSpacing: '0.5px', color: 'var(--text-muted)', display: 'block', marginBottom: '7px' };

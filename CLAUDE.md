@@ -8,6 +8,9 @@
 - Flujo: editar `client/src/**` o `api/**` -> `cd client && npm run build` para verificar que compila -> `git add` (solo fuente, no dist) -> commit -> `git push origin master`. Avisar Ctrl+F5 por cache.
 - Verificar local opcional: `cd client && npm run build` (Vite 5). Backend serverless en `api/*.js` (Vercel functions), data en Supabase.
 
+## Historial de deploys
+- 2026-06-01 - commit `4c005a5` (push master OK, Vercel auto-deploy). Diagnostico junto a HC + contador de sesiones por ciclo (arranca en 0 al renovar turnos).
+
 ## Arquitectura
 - Frontend: Vite + React 18 en `client/src/`. Vistas clave en `client/src/features/` (agenda, patients, statistics, config).
 - API: funciones serverless en `api/*.js` (patients, sessions, treatments, pathologies, professionals, stats). Cliente Supabase en `api/_supabase.js`.
