@@ -36,14 +36,14 @@ const PatientHistory = ({ patient }) => {
     const faltantes = sessions.filter(s => s.estado === 'programado' && (new Date(s.fecha + 'T00:00:00') >= hoy));
     const faltadas = sessions.filter(s => s.estado === 'no asistió');
 
-    // Sumatoria anual: todas las sesiones realizadas en el año (asistió + no asistió),
-    // acumulando todas las tandas. (En la agenda el globito es por tanda; acá es el total del año.)
+    // Sumatoria anual: sólo las sesiones que el paciente HIZO (asistió) en el año,
+    // acumulando todas las tandas. NO se suman las faltas. (En la agenda el globito es
+    // por tanda; acá es el total del año de las que vino.)
     const anioActual = new Date().getFullYear();
     const realizadasAnio = sessions.filter(s => {
         if (!s.fecha) return false;
         const yr = parseInt(String(s.fecha).slice(0, 4), 10);
-        const e = s.estado || '';
-        return yr === anioActual && (e.startsWith('asisti') || e.startsWith('no asisti'));
+        return yr === anioActual && (s.estado || '').startsWith('asisti');
     }).length;
 
     // Obtener todos los nombres de tratamientos únicos
@@ -85,7 +85,7 @@ const PatientHistory = ({ patient }) => {
                             <p style={{ color: 'var(--text-muted)', fontSize: '0.65rem', marginBottom: '4px' }}>PRÓXIMAS</p>
                             <p style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--primary)' }}>{faltantes.length}</p>
                         </div>
-                        <div title={`Suma de todas las sesiones realizadas (asistió + faltó) en ${anioActual}`} style={{ background: 'rgba(255,255,255,0.06)', padding: '8px', borderRadius: '8px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.08)' }}>
+                        <div title={`Sesiones que el paciente asistió en ${anioActual} (no incluye faltas)`} style={{ background: 'rgba(255,255,255,0.06)', padding: '8px', borderRadius: '8px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.08)' }}>
                             <p style={{ color: 'var(--text-muted)', fontSize: '0.65rem', marginBottom: '4px' }}>HISTORIAL {anioActual}</p>
                             <p style={{ fontSize: '1.2rem', fontWeight: '800', color: 'white' }}>{realizadasAnio}</p>
                         </div>

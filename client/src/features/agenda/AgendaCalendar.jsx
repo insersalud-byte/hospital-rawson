@@ -13,19 +13,19 @@ const esAsistio = (e) => (e || '').startsWith('asisti');
 const esNoAsistio = (e) => (e || '').startsWith('no asisti');
 
 // ─── Conteo de sesiones de la TANDA ACTUAL ────────────────────────────────────
-// REGLA: el paciente recibe una tanda (ej. 10 sesiones). El contador cuenta las
-// COMPLETADAS (asistió + no asistió) DENTRO de esa tanda. Cuando la termina y se
-// le dan otras 10, arranca de 0. El contador NUNCA acumula entre tandas (nunca 30).
+// REGLA (definida por el usuario):
+//  - Una TANDA = lo que se CARGÓ junto (la orden). El denominador del globito es el
+//    tamaño de la tanda (ej. cargó 10 -> /10; le dieron 2 -> /2).
+//  - El numerador son sólo las que el paciente HIZO (asistió). Las faltas NO suman al
+//    numerador (pero ocupan lugar en la tanda, así que cuentan en el total).
+//  - El contador NUNCA acumula entre tandas: al empezar una orden nueva arranca de 0.
 //
-// Una tanda = el LOTE en que se cargaron las sesiones (mismo created_at; la
-// secretaria carga toda la orden junta). La "tanda actual" es el lote de la
-// PRÓXIMA sesión pendiente del paciente (la programada futura más temprana). Si no
-// tiene programadas futuras, se usa el lote de la sesión más reciente.
-// Ojo: NO se usa el lote más nuevo por created_at (puede ser una tanda agendada a
-// futuro y daría 0 a un paciente que está cursando una tanda anterior, ej. Morales).
+// Implementación: agrupamos por LOTE (mismo created_at = un "Guardar" de la secretaria).
+// Como a veces una orden de 10 se carga partida (ej. 9 + 1 de recupero), los lotes CHICOS
+// (<=2) pegados en fechas al lote anterior se absorben en la misma tanda (son recuperos).
+// La tanda ACTUAL es la del próximo turno pendiente; si el paciente terminó, la última.
 
-// Clave de lote: created_at redondeado al minuto (un insert de tanda comparte el
-// instante; los lotes distintos están separados por horas/días).
+// Clave de lote: created_at redondeado al minuto (un insert de tanda comparte el instante).
 const batchKeyOf = (s) => {
     if (!s.created_at) return 'none';
     const t = new Date(s.created_at).getTime();
@@ -37,34 +37,47 @@ const localTodayStr = () => {
     return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
 };
 
-// Devuelve { assisted, missed } contando sólo las completadas de la tanda actual.
+// Devuelve { attended, missed, total } de la tanda actual.
 const cycleCounts = (patientSessions) => {
     // Sesiones reales del flujo (excluye 'suspendido' y vacías)
     const visibles = patientSessions.filter(s =>
         s.fecha && (s.estado === 'programado' || esAsistio(s.estado) || esNoAsistio(s.estado))
     );
-    if (visibles.length === 0) return { assisted: 0, missed: 0 };
+    if (visibles.length === 0) return { attended: 0, missed: 0, total: 0 };
 
+    // Agrupar por lote y ordenar lotes por su primera fecha
+    const map = {};
+    visibles.forEach(s => { const k = batchKeyOf(s); (map[k] = map[k] || []).push(s); });
+    const batches = Object.values(map)
+        .map(sess => {
+            const fechas = sess.map(x => x.fecha).sort();
+            return { sess, first: fechas[0], last: fechas[fechas.length - 1] };
+        })
+        .sort((a, b) => (a.first < b.first ? -1 : a.first > b.first ? 1 : 0));
+
+    // Construir TANDAS absorbiendo recuperos (lotes <=2 pegados en fechas al anterior)
+    const dayDiff = (a, b) => (new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 86400000;
+    const tandas = [];
+    batches.forEach(b => {
+        const prev = tandas[tandas.length - 1];
+        if (prev && b.sess.length <= 2 && dayDiff(prev.last, b.first) <= 4) {
+            prev.sess.push(...b.sess);
+            if (b.last > prev.last) prev.last = b.last;
+        } else {
+            tandas.push({ sess: [...b.sess], first: b.first, last: b.last });
+        }
+    });
+
+    // Tanda actual = la del próximo turno pendiente (>= hoy); si no hay, la última
     const today = localTodayStr();
-    const byFechaAsc = (a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0);
+    let current = tandas.find(t => t.sess.some(s => s.estado === 'programado' && s.fecha >= today));
+    if (!current) current = tandas[tandas.length - 1];
 
-    // Ancla: próxima programada futura (la más temprana); fallback: la más reciente por fecha
-    const futureProg = visibles
-        .filter(s => s.estado === 'programado' && s.fecha >= today)
-        .sort(byFechaAsc);
-    const anchor = futureProg.length > 0
-        ? futureProg[0]
-        : [...visibles].sort(byFechaAsc)[visibles.length - 1];
-
-    // Tanda actual = lote del ancla; contamos sólo las completadas de ese lote
-    const batchKey = batchKeyOf(anchor);
-    const inBatch = visibles.filter(s => batchKeyOf(s) === batchKey);
-    const assisted = inBatch.filter(s => esAsistio(s.estado)).length;
-    const missed = inBatch.filter(s => esNoAsistio(s.estado)).length;
-    const total = inBatch.length;            // sesiones programadas en la tanda (normalmente 10, puede ser menos)
-    const completed = assisted + missed;     // hechas (asistió + no asistió)
-    const remaining = Math.max(total - completed, 0); // cuánto le falta de la tanda
-    return { assisted, missed, total, completed, remaining };
+    return {
+        attended: current.sess.filter(s => esAsistio(s.estado)).length, // las que HIZO
+        missed: current.sess.filter(s => esNoAsistio(s.estado)).length,
+        total: current.sess.length, // lo que se cargó en la tanda
+    };
 };
 
 // ─── Historial + Panel de Atención ────────────────────────────────────────────
@@ -681,11 +694,12 @@ const UpcomingAppointmentsModal = ({ onClose }) => {
                     👤 {s.apellido} {s.nombre}
                     {(() => {
                         const c = sessionCounts[String(s.paciente_id)];
-                        const completed = (c?.completed != null) ? c.completed : ((c?.assisted || 0) + (c?.missed || 0));
+                        const attended = c?.attended || 0;
+                        const missed = c?.missed || 0;
                         const total = c?.total || 0;
-                        const alerta = (c?.missed || 0) >= 2;
+                        const alerta = missed >= 2;
                         return (
-                            <span title={`Tanda: ${completed} de ${total} hechas · faltan ${Math.max(total - completed, 0)}`} style={{
+                            <span title={`Tanda: asistió ${attended} de ${total}${missed ? ` · ${missed} falta${missed !== 1 ? 's' : ''}` : ''} · faltan ${Math.max(total - attended - missed, 0)}`} style={{
                                 fontSize: '0.72rem',
                                 fontWeight: '800',
                                 background: alerta ? 'rgba(255,82,82,0.25)' : 'rgba(0,136,204,0.25)',
@@ -698,7 +712,7 @@ const UpcomingAppointmentsModal = ({ onClose }) => {
                                 borderRadius: '20px',
                                 border: alerta ? '1px solid rgba(255,82,82,0.4)' : '1px solid rgba(0,136,204,0.4)'
                             }}>
-                                {completed}/{total}
+                                {attended}/{total}
                             </span>
                         );
                     })()}
@@ -942,7 +956,7 @@ const AgendaCalendar = () => {
                     sessionId: session.id,
                     hora,
                     estado: session.estado,
-                    sessionCount: sessionData[String(patient.id)]?.assisted || 0,
+                    sessionCount: sessionData[String(patient.id)]?.attended || 0,
                     missedCount: sessionData[String(patient.id)]?.missed || 0,
                     tandaTotal: sessionData[String(patient.id)]?.total || 0,
                     remainingSessions: remainingData[String(patient.id)] || 0
@@ -1088,7 +1102,7 @@ const AgendaCalendar = () => {
                                                         {sessionLabel}
                                                     </span>
                                                 )}
-                                                <span title={`Tanda: ${(p.sessionCount || 0) + (p.missedCount || 0)} de ${p.tandaTotal || 0} hechas · faltan ${Math.max((p.tandaTotal || 0) - ((p.sessionCount || 0) + (p.missedCount || 0)), 0)}`} style={{
+                                                <span title={`Tanda: asistió ${p.sessionCount || 0} de ${p.tandaTotal || 0}${p.missedCount ? ` · ${p.missedCount} falta${p.missedCount !== 1 ? 's' : ''}` : ''} · faltan ${Math.max((p.tandaTotal || 0) - (p.sessionCount || 0) - (p.missedCount || 0), 0)}`} style={{
                                                     marginLeft: '6px',
                                                     fontSize: '0.74rem',
                                                     fontWeight: '800',
@@ -1102,7 +1116,7 @@ const AgendaCalendar = () => {
                                                     borderRadius: '20px',
                                                     border: (p.missedCount >= 2) ? '1px solid #ff5252' : 'none'
                                                 }}>
-                                                    {(p.sessionCount || 0) + (p.missedCount || 0)}/{p.tandaTotal || 0}
+                                                    {(p.sessionCount || 0)}/{p.tandaTotal || 0}
                                                 </span>
                                             </button>
                                         );
