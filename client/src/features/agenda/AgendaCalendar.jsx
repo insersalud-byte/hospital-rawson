@@ -12,38 +12,56 @@ const API_URL = import.meta.env.MODE === 'development' ? 'http://localhost:3005/
 const esAsistio = (e) => (e || '').startsWith('asisti');
 const esNoAsistio = (e) => (e || '').startsWith('no asisti');
 
-// ─── Conteo de sesiones del CICLO ACTUAL ──────────────────────────────────────
-// Un "ciclo" es la tanda de sesiones que el paciente está cursando ahora. En un
-// tratamiento continuo las sesiones van cada pocos días (sin huecos grandes),
-// aunque se carguen en varias tandas. Cuando un paciente TERMINA y vuelve con una
-// orden nueva, queda un HUECO grande entre la última fecha vieja y la primera
-// nueva. Ese hueco marca el inicio de un ciclo nuevo, y el contador arranca en 0.
-// Importante: NO usamos created_at (la secretaria agenda en tandas chicas dentro
-// de un mismo tratamiento, lo que daría falsos reinicios). Usamos saltos de fecha.
-const CYCLE_GAP_DAYS = 30; // hueco mínimo (en días) entre fechas para considerar un ciclo nuevo
+// ─── Conteo de sesiones de la TANDA ACTUAL ────────────────────────────────────
+// REGLA: el paciente recibe una tanda (ej. 10 sesiones). El contador cuenta las
+// COMPLETADAS (asistió + no asistió) DENTRO de esa tanda. Cuando la termina y se
+// le dan otras 10, arranca de 0. El contador NUNCA acumula entre tandas (nunca 30).
+//
+// Una tanda = el LOTE en que se cargaron las sesiones (mismo created_at; la
+// secretaria carga toda la orden junta). La "tanda actual" es el lote de la
+// PRÓXIMA sesión pendiente del paciente (la programada futura más temprana). Si no
+// tiene programadas futuras, se usa el lote de la sesión más reciente.
+// Ojo: NO se usa el lote más nuevo por created_at (puede ser una tanda agendada a
+// futuro y daría 0 a un paciente que está cursando una tanda anterior, ej. Morales).
 
-// Devuelve { assisted, missed } contando sólo las sesiones completadas del ciclo actual.
+// Clave de lote: created_at redondeado al minuto (un insert de tanda comparte el
+// instante; los lotes distintos están separados por horas/días).
+const batchKeyOf = (s) => {
+    if (!s.created_at) return 'none';
+    const t = new Date(s.created_at).getTime();
+    return Number.isFinite(t) ? Math.floor(t / 60000) : 'none';
+};
+
+const localTodayStr = () => {
+    const n = new Date();
+    return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
+};
+
+// Devuelve { assisted, missed } contando sólo las completadas de la tanda actual.
 const cycleCounts = (patientSessions) => {
-    // Sesiones reales del flujo, ordenadas por fecha ascendente
-    const visibles = patientSessions
-        .filter(s => s.fecha && (s.estado === 'programado' || esAsistio(s.estado) || esNoAsistio(s.estado)))
-        .sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0));
-
+    // Sesiones reales del flujo (excluye 'suspendido' y vacías)
+    const visibles = patientSessions.filter(s =>
+        s.fecha && (s.estado === 'programado' || esAsistio(s.estado) || esNoAsistio(s.estado))
+    );
     if (visibles.length === 0) return { assisted: 0, missed: 0 };
 
-    // Inicio del último ciclo: último punto donde el hueco entre fechas consecutivas supera CYCLE_GAP_DAYS
-    let cycleStartIdx = 0;
-    for (let i = 1; i < visibles.length; i++) {
-        const prev = new Date(visibles[i - 1].fecha + 'T00:00:00');
-        const cur = new Date(visibles[i].fecha + 'T00:00:00');
-        const diffDays = (cur - prev) / (1000 * 60 * 60 * 24);
-        if (diffDays > CYCLE_GAP_DAYS) cycleStartIdx = i;
-    }
+    const today = localTodayStr();
+    const byFechaAsc = (a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0);
 
-    const currentCycle = visibles.slice(cycleStartIdx);
+    // Ancla: próxima programada futura (la más temprana); fallback: la más reciente por fecha
+    const futureProg = visibles
+        .filter(s => s.estado === 'programado' && s.fecha >= today)
+        .sort(byFechaAsc);
+    const anchor = futureProg.length > 0
+        ? futureProg[0]
+        : [...visibles].sort(byFechaAsc)[visibles.length - 1];
+
+    // Tanda actual = lote del ancla; contamos sólo las completadas de ese lote
+    const batchKey = batchKeyOf(anchor);
+    const inBatch = visibles.filter(s => batchKeyOf(s) === batchKey);
     return {
-        assisted: currentCycle.filter(s => esAsistio(s.estado)).length,
-        missed: currentCycle.filter(s => esNoAsistio(s.estado)).length,
+        assisted: inBatch.filter(s => esAsistio(s.estado)).length,
+        missed: inBatch.filter(s => esNoAsistio(s.estado)).length,
     };
 };
 

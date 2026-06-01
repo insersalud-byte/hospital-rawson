@@ -18,7 +18,8 @@ Cambios solo-docs (CLAUDE.md, README) saltan el paso 2.
 - Verificar local opcional: `cd client && npm run build` (Vite 5). Backend serverless en `api/*.js` (Vercel functions), data en Supabase.
 
 ## Historial de deploys
-- 2026-06-01 - commit `4c005a5` (push master OK, Vercel auto-deploy). Diagnostico junto a HC + contador de sesiones por ciclo (arranca en 0 al renovar turnos).
+- 2026-06-01 - commit `4c005a5`. Diagnostico junto a HC + primer intento de contador por ciclo.
+- 2026-06-01 - contador por TANDA (lote de la proxima sesion pendiente). Control de datos OK: nunca acumula a 30, Morales=1, GONZALEZ FRANCO=0.
 
 ## Arquitectura
 - Frontend: Vite + React 18 en `client/src/`. Vistas clave en `client/src/features/` (agenda, patients, statistics, config).
@@ -31,9 +32,10 @@ Cambios solo-docs (CLAUDE.md, README) saltan el paso 2.
 - Sesion: `paciente_id`, `fecha` (yyyy-mm-dd), `hora`, `estado` ('programado' | 'asistió' | 'no asistió' | 'suspendido'), `created_at`, `observaciones`.
 - Estados con encoding seguro: comparar con `startsWith('asisti')` / `startsWith('no asisti')` porque la "ó" puede corromperse.
 
-## Contador de sesiones por CICLO (AgendaCalendar.jsx)
-- LOGICA CLAVE: el contador cuenta las sesiones COMPLETADAS = asistió + no asistió (ambas cuentan, la falta tambien consume sesion de la tanda). Ej: 7 hechas + 3 faltas = 10 -> termino las 10 que se programaron. SIEMPRE mirar contra las que se PROGRAMARON (la tanda actual), no el historico total del paciente.
-- El globito numerico en la agenda y en "Proximos Turnos" muestra ese conteo del CICLO ACTUAL.
-- Un ciclo se detecta por SALTOS DE FECHA (`cycleCounts()`, constante `CYCLE_GAP_DAYS=30`): si entre dos fechas consecutivas hay un hueco > 30 dias, empieza un ciclo nuevo y el contador arranca en 0. NO usar `created_at` (la secretaria agenda en tandas chicas dentro del mismo tratamiento -> daria falsos reinicios; ej. paciente Morales tiene 7 tandas con created_at distintos pero fechas seguidas = 1 solo tratamiento).
-- Caso de reinicio legitimo (verificado): GONZALEZ FRANCO completo 29 hasta 15-may, hueco de 31 dias, arranca bloque nuevo 15-jun -> contador 0.
+## Contador de sesiones por TANDA (AgendaCalendar.jsx, `cycleCounts()`)
+- REGLA: el paciente recibe una TANDA (ej. 10 sesiones). El contador cuenta las COMPLETADAS = asistió + no asistió (la falta tambien consume sesion) DENTRO de esa tanda. Ej: 7 hechas + 3 faltas = 10 -> termino la tanda. Se le dan otras 10 -> arranca de 0. EL CONTADOR NUNCA ACUMULA ENTRE TANDAS (nunca 30/40). NO mirar el historico total del paciente.
+- Una tanda = el LOTE en que se cargaron las sesiones (mismo `created_at`, redondeado al minuto en `batchKeyOf`; la secretaria carga la orden junta).
+- Tanda actual = lote de la PROXIMA sesion pendiente (programada futura mas temprana). Si no hay futuras, lote de la sesion mas reciente. NO usar el lote mas nuevo por created_at (puede ser una tanda agendada a futuro y daria 0 a quien esta cursando una tanda anterior -> ese fue el bug de Morales).
+- Verificado contra la base (control pre-deploy): Morales=1 (tanda en curso, no 0 ni 15), GONZALEZ FRANCO=0 (termino 29, tanda nueva), ningun contador llega a 30 aunque el historico sea 33.
+- El globito en la agenda y en "Proximos Turnos" muestra este conteo de la tanda actual. La falta (>=2 en la tanda) lo pone en rojo.
 - Diagnostico (`patologia`) se muestra al lado de HC/DNI en el header del panel del paciente.
