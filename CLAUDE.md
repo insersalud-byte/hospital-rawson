@@ -37,5 +37,6 @@ Cambios solo-docs (CLAUDE.md, README) saltan el paso 2.
 - Una tanda = el LOTE en que se cargaron las sesiones (mismo `created_at`, redondeado al minuto en `batchKeyOf`; la secretaria carga la orden junta).
 - Tanda actual = lote de la PROXIMA sesion pendiente (programada futura mas temprana). Si no hay futuras, lote de la sesion mas reciente. NO usar el lote mas nuevo por created_at (puede ser una tanda agendada a futuro y daria 0 a quien esta cursando una tanda anterior -> ese fue el bug de Morales).
 - Verificado contra la base (control pre-deploy): Morales=1 (tanda en curso, no 0 ni 15), GONZALEZ FRANCO=0 (termino 29, tanda nueva), ningun contador llega a 30 aunque el historico sea 33.
-- El globito en la agenda y en "Proximos Turnos" muestra este conteo de la tanda actual. La falta (>=2 en la tanda) lo pone en rojo.
+- El tamaño de la tanda NO esta hardcodeado en 10: es el total de sesiones del lote (`total` en `cycleCounts`, normalmente 10 pero puede ser menos). `remaining = total - completed` = cuanto le falta.
+- El globito en la agenda y en "Proximos Turnos" muestra `completadas/total` (ej. `1/10`); el tooltip dice cuantas faltan. La falta (>=2 en la tanda) lo pone en rojo.
 - Diagnostico (`patologia`) se muestra al lado de HC/DNI en el header del panel del paciente.

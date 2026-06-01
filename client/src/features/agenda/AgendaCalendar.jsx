@@ -59,10 +59,12 @@ const cycleCounts = (patientSessions) => {
     // Tanda actual = lote del ancla; contamos sólo las completadas de ese lote
     const batchKey = batchKeyOf(anchor);
     const inBatch = visibles.filter(s => batchKeyOf(s) === batchKey);
-    return {
-        assisted: inBatch.filter(s => esAsistio(s.estado)).length,
-        missed: inBatch.filter(s => esNoAsistio(s.estado)).length,
-    };
+    const assisted = inBatch.filter(s => esAsistio(s.estado)).length;
+    const missed = inBatch.filter(s => esNoAsistio(s.estado)).length;
+    const total = inBatch.length;            // sesiones programadas en la tanda (normalmente 10, puede ser menos)
+    const completed = assisted + missed;     // hechas (asistió + no asistió)
+    const remaining = Math.max(total - completed, 0); // cuánto le falta de la tanda
+    return { assisted, missed, total, completed, remaining };
 };
 
 // ─── Historial + Panel de Atención ────────────────────────────────────────────
@@ -677,21 +679,29 @@ const UpcomingAppointmentsModal = ({ onClose }) => {
             }}>
                 <span style={{ fontWeight: '700', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     👤 {s.apellido} {s.nombre}
-                    <span style={{ 
-                        fontSize: '0.75rem', 
-                        fontWeight: '800', 
-                        background: (sessionCounts[String(s.paciente_id)]?.missed >= 2) ? 'rgba(255,82,82,0.25)' : 'rgba(0,136,204,0.25)', 
-                        color: (sessionCounts[String(s.paciente_id)]?.missed >= 2) ? '#ff5252' : 'var(--primary)', 
-                        minWidth: '20px',
-                        height: '20px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        borderRadius: '50%', 
-                        border: (sessionCounts[String(s.paciente_id)]?.missed >= 2) ? '1px solid rgba(255,82,82,0.4)' : '1px solid rgba(0,136,204,0.4)' 
-                    }}>
-                        {(sessionCounts[String(s.paciente_id)]?.assisted || 0) + (sessionCounts[String(s.paciente_id)]?.missed || 0)}
-                    </span>
+                    {(() => {
+                        const c = sessionCounts[String(s.paciente_id)];
+                        const completed = (c?.completed != null) ? c.completed : ((c?.assisted || 0) + (c?.missed || 0));
+                        const total = c?.total || 0;
+                        const alerta = (c?.missed || 0) >= 2;
+                        return (
+                            <span title={`Tanda: ${completed} de ${total} hechas · faltan ${Math.max(total - completed, 0)}`} style={{
+                                fontSize: '0.72rem',
+                                fontWeight: '800',
+                                background: alerta ? 'rgba(255,82,82,0.25)' : 'rgba(0,136,204,0.25)',
+                                color: alerta ? '#ff5252' : 'var(--primary)',
+                                padding: '2px 9px',
+                                height: '20px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderRadius: '20px',
+                                border: alerta ? '1px solid rgba(255,82,82,0.4)' : '1px solid rgba(0,136,204,0.4)'
+                            }}>
+                                {completed}/{total}
+                            </span>
+                        );
+                    })()}
                 </span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <button onClick={() => setSummaryPatient(s)} style={{
@@ -934,6 +944,7 @@ const AgendaCalendar = () => {
                     estado: session.estado,
                     sessionCount: sessionData[String(patient.id)]?.assisted || 0,
                     missedCount: sessionData[String(patient.id)]?.missed || 0,
+                    tandaTotal: sessionData[String(patient.id)]?.total || 0,
                     remainingSessions: remainingData[String(patient.id)] || 0
                 };
             });
@@ -1077,21 +1088,21 @@ const AgendaCalendar = () => {
                                                         {sessionLabel}
                                                     </span>
                                                 )}
-                                                <span style={{
+                                                <span title={`Tanda: ${(p.sessionCount || 0) + (p.missedCount || 0)} de ${p.tandaTotal || 0} hechas · faltan ${Math.max((p.tandaTotal || 0) - ((p.sessionCount || 0) + (p.missedCount || 0)), 0)}`} style={{
                                                     marginLeft: '6px',
-                                                    fontSize: '0.78rem',
+                                                    fontSize: '0.74rem',
                                                     fontWeight: '800',
                                                     background: (p.missedCount >= 2) ? 'rgba(255,82,82,0.4)' : 'rgba(0,0,0,0.2)',
                                                     color: (p.missedCount >= 2) ? '#ff5252' : (isLast || isPenultimate) ? '#000' : 'white',
-                                                    minWidth: '22px',
+                                                    padding: '0 9px',
                                                     height: '22px',
                                                     display: 'flex',
                                                     alignItems: 'center',
                                                     justifyContent: 'center',
-                                                    borderRadius: '50%',
+                                                    borderRadius: '20px',
                                                     border: (p.missedCount >= 2) ? '1px solid #ff5252' : 'none'
                                                 }}>
-                                                    {(p.sessionCount || 0) + (p.missedCount || 0)}
+                                                    {(p.sessionCount || 0) + (p.missedCount || 0)}/{p.tandaTotal || 0}
                                                 </span>
                                             </button>
                                         );
