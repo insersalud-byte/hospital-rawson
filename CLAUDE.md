@@ -24,5 +24,5 @@
 
 ## Contador de sesiones por CICLO (AgendaCalendar.jsx)
 - El globito numerico en la agenda y en "Proximos Turnos" cuenta solo las sesiones completadas del CICLO ACTUAL (no el historico total).
-- Un ciclo = la ultima tanda de sesiones cargada. Se detecta por `created_at`: se toma el lote mas reciente (ventana de 2 dias) via `cycleCounts()`. Cuando un paciente termina y se le dan sesiones nuevas, el contador arranca en 0 el primer dia.
+- Un ciclo se detecta por SALTOS DE FECHA (`cycleCounts()`, constante `CYCLE_GAP_DAYS=30`): si entre dos fechas consecutivas hay un hueco > 30 dias, empieza un ciclo nuevo y el contador arranca en 0. NO usar `created_at` (la secretaria agenda en tandas chicas dentro del mismo tratamiento -> daria falsos reinicios; ej. paciente Morales).
 - Diagnostico (`patologia`) se muestra al lado de HC/DNI en el header del panel del paciente.

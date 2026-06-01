@@ -13,37 +13,37 @@ const esAsistio = (e) => (e || '').startsWith('asisti');
 const esNoAsistio = (e) => (e || '').startsWith('no asisti');
 
 // ─── Conteo de sesiones del CICLO ACTUAL ──────────────────────────────────────
-// Un "ciclo" es la última tanda de sesiones cargada al paciente. Cuando un
-// paciente termina sus sesiones y se le dan nuevas, esas se crean con un
-// created_at posterior (semanas después que el lote anterior), aunque las fechas
-// agendadas sean cercanas. Por eso el contador arranca en 0 el primer día de la
-// tanda nueva: sólo contamos las completadas dentro del lote más reciente.
-const CYCLE_BATCH_WINDOW_MS = 2 * 24 * 60 * 60 * 1000; // 2 días de tolerancia dentro de un mismo lote
-
-const toTime = (v) => {
-    if (!v) return 0;
-    const t = new Date(v).getTime();
-    return Number.isFinite(t) ? t : 0;
-};
+// Un "ciclo" es la tanda de sesiones que el paciente está cursando ahora. En un
+// tratamiento continuo las sesiones van cada pocos días (sin huecos grandes),
+// aunque se carguen en varias tandas. Cuando un paciente TERMINA y vuelve con una
+// orden nueva, queda un HUECO grande entre la última fecha vieja y la primera
+// nueva. Ese hueco marca el inicio de un ciclo nuevo, y el contador arranca en 0.
+// Importante: NO usamos created_at (la secretaria agenda en tandas chicas dentro
+// de un mismo tratamiento, lo que daría falsos reinicios). Usamos saltos de fecha.
+const CYCLE_GAP_DAYS = 30; // hueco mínimo (en días) entre fechas para considerar un ciclo nuevo
 
 // Devuelve { assisted, missed } contando sólo las sesiones completadas del ciclo actual.
 const cycleCounts = (patientSessions) => {
-    const completed = patientSessions.filter(s => esAsistio(s.estado) || esNoAsistio(s.estado));
-    const times = patientSessions.map(s => toTime(s.created_at)).filter(t => t > 0);
+    // Sesiones reales del flujo, ordenadas por fecha ascendente
+    const visibles = patientSessions
+        .filter(s => s.fecha && (s.estado === 'programado' || esAsistio(s.estado) || esNoAsistio(s.estado)))
+        .sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0));
 
-    // Sin created_at confiable: fallback al histórico total (comportamiento anterior)
-    if (times.length === 0) {
-        return {
-            assisted: completed.filter(s => esAsistio(s.estado)).length,
-            missed: completed.filter(s => esNoAsistio(s.estado)).length,
-        };
+    if (visibles.length === 0) return { assisted: 0, missed: 0 };
+
+    // Inicio del último ciclo: último punto donde el hueco entre fechas consecutivas supera CYCLE_GAP_DAYS
+    let cycleStartIdx = 0;
+    for (let i = 1; i < visibles.length; i++) {
+        const prev = new Date(visibles[i - 1].fecha + 'T00:00:00');
+        const cur = new Date(visibles[i].fecha + 'T00:00:00');
+        const diffDays = (cur - prev) / (1000 * 60 * 60 * 24);
+        if (diffDays > CYCLE_GAP_DAYS) cycleStartIdx = i;
     }
 
-    const cycleStart = Math.max(...times) - CYCLE_BATCH_WINDOW_MS;
-    const inCycle = completed.filter(s => toTime(s.created_at) >= cycleStart);
+    const currentCycle = visibles.slice(cycleStartIdx);
     return {
-        assisted: inCycle.filter(s => esAsistio(s.estado)).length,
-        missed: inCycle.filter(s => esNoAsistio(s.estado)).length,
+        assisted: currentCycle.filter(s => esAsistio(s.estado)).length,
+        missed: currentCycle.filter(s => esNoAsistio(s.estado)).length,
     };
 };
 
