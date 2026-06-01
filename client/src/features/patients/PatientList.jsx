@@ -516,12 +516,12 @@ const PatientList = () => {
                 {filteredPatients.map(patient => (
                     <div key={patient.id} className="premium-card glass-panel"
                         style={{ borderLeft: `4px solid ${patient.estado_paciente === 'activo' ? 'var(--success)' : 'var(--text-muted)'}` }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                            <div>
-                                <h3 style={{ fontSize: '1.05rem', marginBottom: '3px' }}>{patient.nombre} {patient.apellido}</h3>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px', flexWrap: 'wrap', gap: '10px' }}>
+                            <div style={{ minWidth: 0 }}>
+                                <h3 style={{ fontSize: '1.05rem', marginBottom: '3px', wordBreak: 'break-word' }}>{patient.nombre} {patient.apellido}</h3>
                                 <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>HC: {patient.historia_clinica}</p>
                             </div>
-                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end', rowGap: '6px', minWidth: 0 }}>
                                 <button onClick={() => setExpandedHistoryId(expandedHistoryId === patient.id ? null : patient.id)}
                                     style={{ display: 'flex', alignItems: 'center', gap: '6px', background: expandedHistoryId === patient.id ? 'var(--primary)' : 'rgba(255,255,255,0.08)', border: '1px solid var(--border)', color: 'white', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}
                                     title="Ver historial y estadísticas">
