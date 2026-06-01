@@ -1,5 +1,14 @@
 # Hospital Rawson - Kinesiología (agenda de turnos)
 
+## CONTROL PRE-DEPLOY OBLIGATORIO (procedimiento estandar para TODO cambio)
+Antes de pushear/deployar CUALQUIER cosa, en este orden. No saltear pasos.
+1. **Compila**: `cd client && npm run build`. Si falla, no se deploya.
+2. **Control de datos reales** (si el cambio afecta como se muestran/calculan datos): ANTES de deployar, simular la logica nueva contra la base productiva (Supabase MCP, project `gvharyztavhugqiaihjq`) y comparar viejo vs nuevo. Verificar que SOLO cambian las filas que deberian cambiar. Ej. del bug del contador: una query que contaba cuantos pacientes pasaban a 0 revelo que se reseteaban pacientes en tratamiento (Morales) y no solo los que reempezaron. Si el control muestra cambios masivos inesperados -> NO deployar, revisar la logica.
+3. **Revisar alcance del commit**: `git status`. Commitear SOLO los archivos del cambio actual (no arrastrar trabajo ajeno a medias). Nunca `git add -A` a ciegas.
+4. Recien ahi: commit + `git push origin master`. Avisar Ctrl+F5.
+5. Registrar en "Historial de deploys" abajo.
+Cambios solo-docs (CLAUDE.md, README) saltan el paso 2.
+
 ## Deploy (regla de oro)
 - Repo GitHub: `insersalud-byte/hospital-rawson`, branch de produccion: `master`.
 - Hosting: Vercel conectado al repo. **Push a `master` = deploy automatico** (Vercel buildea solo).
@@ -23,6 +32,8 @@
 - Estados con encoding seguro: comparar con `startsWith('asisti')` / `startsWith('no asisti')` porque la "ó" puede corromperse.
 
 ## Contador de sesiones por CICLO (AgendaCalendar.jsx)
-- El globito numerico en la agenda y en "Proximos Turnos" cuenta solo las sesiones completadas del CICLO ACTUAL (no el historico total).
-- Un ciclo se detecta por SALTOS DE FECHA (`cycleCounts()`, constante `CYCLE_GAP_DAYS=30`): si entre dos fechas consecutivas hay un hueco > 30 dias, empieza un ciclo nuevo y el contador arranca en 0. NO usar `created_at` (la secretaria agenda en tandas chicas dentro del mismo tratamiento -> daria falsos reinicios; ej. paciente Morales).
+- LOGICA CLAVE: el contador cuenta las sesiones COMPLETADAS = asistió + no asistió (ambas cuentan, la falta tambien consume sesion de la tanda). Ej: 7 hechas + 3 faltas = 10 -> termino las 10 que se programaron. SIEMPRE mirar contra las que se PROGRAMARON (la tanda actual), no el historico total del paciente.
+- El globito numerico en la agenda y en "Proximos Turnos" muestra ese conteo del CICLO ACTUAL.
+- Un ciclo se detecta por SALTOS DE FECHA (`cycleCounts()`, constante `CYCLE_GAP_DAYS=30`): si entre dos fechas consecutivas hay un hueco > 30 dias, empieza un ciclo nuevo y el contador arranca en 0. NO usar `created_at` (la secretaria agenda en tandas chicas dentro del mismo tratamiento -> daria falsos reinicios; ej. paciente Morales tiene 7 tandas con created_at distintos pero fechas seguidas = 1 solo tratamiento).
+- Caso de reinicio legitimo (verificado): GONZALEZ FRANCO completo 29 hasta 15-may, hueco de 31 dias, arranca bloque nuevo 15-jun -> contador 0.
 - Diagnostico (`patologia`) se muestra al lado de HC/DNI en el header del panel del paciente.
